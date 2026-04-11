@@ -1,0 +1,62 @@
+{
+  "nursultan_off": {
+    "sounds": [
+      "evaware:nursultan_off"
+    ]
+  },
+  "nursultan_on": {
+    "sounds": [
+      "evaware:nursultan_on"
+    ]
+  },
+  "celestial_off": {
+    "sounds": [
+      "evaware:celestial_off"
+    ]
+  },
+  "celestial_on": {
+    "sounds": [
+      "evaware:celestial_on"
+    ]
+  },
+  "smooth_off": {
+    "sounds": [
+      "evaware:smooth_off"
+    ]
+  },
+  "smooth_on": {
+    "sounds": [
+      "evaware:smooth_on"
+    ]
+  },
+  "akrien_on": {
+    "sounds": [
+      "evaware:akrien_on"
+    ]
+  },
+  "akrien_off": {
+    "sounds": [
+      "evaware:akrien_off"
+    ]
+  },
+  "tech_on": {
+    "sounds": [
+      "evaware:tech_on"
+    ]
+  },
+  "tech_off": {
+    "sounds": [
+      "evaware:tech_off"
+    ]
+  },
+  "blop_on": {
+    "sounds": [
+      "evaware:blop_on"
+    ]
+  },
+  "blop_off": {
+    "sounds": [
+      "evaware:blop_off"
+    ]
+  }
+}

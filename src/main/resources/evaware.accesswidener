@@ -1,0 +1,32 @@
+accessWidener v1  named
+
+accessible class net/minecraft/entity/player/ItemCooldownManager$Entry
+accessible field net/minecraft/client/MinecraftClient itemUseCooldown I
+accessible field net/minecraft/client/gl/Framebuffer depthAttachment I
+accessible field net/minecraft/client/gui/hud/BossBarHud bossBars Ljava/util/Map;
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen backgroundHeight I
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen backgroundWidth I
+accessible field net/minecraft/client/network/ClientPlayerEntity lastSprinting Z
+accessible field net/minecraft/client/network/ClientPlayerInteractionManager blockBreakingCooldown I
+accessible field net/minecraft/client/world/ClientWorld pendingUpdateManager Lnet/minecraft/client/network/PendingUpdateManager;
+accessible field net/minecraft/entity/LivingEntity jumpingCooldown I
+accessible field net/minecraft/entity/LivingEntity lastAttackedTicks I
+accessible field net/minecraft/entity/player/ItemCooldownManager entries Ljava/util/Map;
+accessible field net/minecraft/entity/player/ItemCooldownManager tick I
+accessible field net/minecraft/entity/player/PlayerPosition pitch F
+accessible field net/minecraft/entity/player/PlayerPosition yaw F
+accessible field net/minecraft/entity/projectile/ProjectileEntity ownerUuid Ljava/util/UUID;
+accessible field net/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket pitch F
+accessible field net/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket yaw F
+accessible method net/minecraft/client/MinecraftClient doAttack ()Z
+accessible method net/minecraft/client/MinecraftClient doItemUse ()V
+accessible method net/minecraft/client/input/KeyboardInput getMovementMultiplier (ZZ)F
+accessible method net/minecraft/client/network/AbstractClientPlayerEntity getPlayerListEntry ()Lnet/minecraft/client/network/PlayerListEntry;
+accessible method net/minecraft/client/network/PlayerListEntry texturesSupplier (Lcom/mojang/authlib/GameProfile;)Ljava/util/function/Supplier;
+accessible method net/minecraft/client/render/GameRenderer getFov (Lnet/minecraft/client/render/Camera;FZ)F
+accessible method net/minecraft/entity/Entity movementInputToVelocity (Lnet/minecraft/util/math/Vec3d;FF)Lnet/minecraft/util/math/Vec3d;
+mutable field net/minecraft/entity/player/PlayerPosition pitch F
+mutable field net/minecraft/entity/player/PlayerPosition yaw F
+mutable field net/minecraft/util/math/Vec3d x D
+mutable field net/minecraft/util/math/Vec3d y D
+mutable field net/minecraft/util/math/Vec3d z D
