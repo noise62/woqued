@@ -141,4 +141,22 @@ public class RotationManager implements QuickImports {
     private float computeAngleDifference(float a, float b) {
         return MathHelper.wrapDegrees(a - b);
     }
+
+    /**
+     * Принудительно синхронизирует серверную ротацию с текущей ротацией игрока.
+     * Отправляет пакет PlayerMoveC2SPacket.LookAndOnGround на сервер.
+     */
+    public void forceSyncToServer() {
+        if (mc.player != null && mc.getNetworkHandler() != null) {
+            mc.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.Full(
+                    mc.player.getX(),
+                    mc.player.getY(),
+                    mc.player.getZ(),
+                    mc.player.getYaw(),
+                    mc.player.getPitch(),
+                    mc.player.isOnGround(),
+                    false
+            ));
+        }
+    }
 }

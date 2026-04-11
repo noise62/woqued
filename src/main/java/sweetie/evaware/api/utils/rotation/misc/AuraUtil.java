@@ -27,6 +27,10 @@ public class AuraUtil implements QuickImports {
                 // Grim doesn't need special attack handling
             }
 
+            case "Sloth" -> {
+                // Sloth handles attack in AuraModule directly
+            }
+
             default -> {
                 hitCount += 1;
                 if (hitCount >= 3) {
@@ -35,7 +39,6 @@ public class AuraUtil implements QuickImports {
             }
         }
     }
-
     public Vec3d getAimpoint(LivingEntity entity, String mode) {
         switch (mode) {
             case "Ft snap" -> {
@@ -43,6 +46,11 @@ public class AuraUtil implements QuickImports {
             }
 
             case "Grim" -> {
+                return RotationUtil.getSpot(entity);
+            }
+
+            case "Sloth" -> {
+                // SlothRotation calculates its own aim points
                 return RotationUtil.getSpot(entity);
             }
 

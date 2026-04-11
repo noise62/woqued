@@ -91,6 +91,7 @@ public class ModuleManager {
                 AutoDuelModule.getInstance(),
                 AntiBotModule.getInstance(),
                 CapeModule.getInstance(),
+                UseTrackerModule.getInstance(),
                 FlightModule.getInstance()
         );
 

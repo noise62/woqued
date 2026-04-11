@@ -26,6 +26,10 @@ public class TaskProcessor<T> {
         activeTasks.add(task);
     }
 
+    public void clearTasksForProvider(Module provider) {
+        activeTasks.removeIf(t -> t.provider == provider);
+    }
+
     public T fetchActiveTaskValue() {
         while (!activeTasks.isEmpty() && (activeTasks.peek().expiresIn <= tickCounter || !activeTasks.peek().provider.isEnabled())) {
             activeTasks.poll();

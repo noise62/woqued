@@ -53,6 +53,7 @@ public class TextUtil implements QuickImports {
     }
 
     public void sendMessage(String message) {
+        if (mc.player == null) return;
         mc.player.sendMessage(Text.literal("").append(gradient(ClientInfo.NAME, true)).append(Text.literal(Formatting.GRAY + " >> " + Formatting.RESET + message)), false);
     }
 

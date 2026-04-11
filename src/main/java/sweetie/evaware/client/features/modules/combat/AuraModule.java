@@ -29,7 +29,6 @@ import sweetie.evaware.api.utils.rotation.rotations.*;
 import sweetie.evaware.api.utils.task.TaskPriority;
 import sweetie.evaware.client.features.modules.combat.elytratarget.ElytraTargetModule;
 import sweetie.evaware.client.features.modules.movement.MoveFixModule;
-
 @ModuleRegister(name = "Aura", category = Category.COMBAT)
 public class AuraModule extends Module {
     @Getter private static final AuraModule instance = new AuraModule();
@@ -37,7 +36,7 @@ public class AuraModule extends Module {
     private final AIPredictor predictor = new AIPredictor();
     private final TargetManager targetManager = new TargetManager();
     public final CombatExecutor combatExecutor = new CombatExecutor();
-
+    private final SlothRotation slothRotation = new SlothRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
             "Grim", "Ft snap", "Really World", "Sloth"
     ).onAction(() -> {
@@ -66,6 +65,7 @@ public class AuraModule extends Module {
     private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
 
     public LivingEntity target;
+    private LivingEntity previousTarget = null;
 
     public AuraModule() {
         addSettings(aimMode, distance, preDistance, targets, options, clientLook,
@@ -85,9 +85,12 @@ public class AuraModule extends Module {
     public void onDisable() {
         targetManager.releaseTarget();
         target = null;
+        previousTarget = null;
         predictor.close();
+        slothRotation.reset();
+        // Сбрасываем ротацию при отключении, чтобы сервер не застревал
+        releaseRotationLock();
     }
-
     @Override
     public void onEnable() {
         targetManager.releaseTarget();
@@ -114,15 +117,23 @@ public class AuraModule extends Module {
         }));
 
         EventListener attackEvent = AttackEvent.getInstance().subscribe(new Listener<>(event -> {
+            if (aimMode.is("Sloth")) {
+                slothRotation.onAttack();
+            }
             AuraUtil.onAttack(aimMode.getValue());
         }));
-
         addEvents(predictor.getEventListeners());
         addEvents(eventUpdate, rotationUpdateEvent, attackEvent);
     }
 
     private void postRotMoveEventHandler() {
-        if (target == null) return;
+        if (target == null) {
+            // Если цель потеряна - сбрасываем ротацию
+            if (previousTarget != null) {
+                releaseRotationLock();
+            }
+            return;
+        }
         Vec3d attackVector = getTargetVector(target);
         Rotation rotation = RotationUtil.fromVec3d(attackVector.subtract(mc.player.getEyePos()));
         rotateToTarget(target, attackVector, rotation);
@@ -130,6 +141,13 @@ public class AuraModule extends Module {
 
     private void updateEventHandler() {
         target = updateTarget();
+        
+        // Отслеживаем потерю цели
+        if (target == null && previousTarget != null) {
+            releaseRotationLock();
+        }
+        previousTarget = target;
+        
         if (target == null) return;
 
         if (RotationUtil.getSpot(target).distanceTo(mc.player.getEyePos()) > getAttackDistance() + getPreDistance()) {
@@ -204,11 +222,10 @@ public class AuraModule extends Module {
             case "Ft snap" -> new FTSnapRotation();
             case "Grim" -> new SnapRotation();
             case "Really World" -> new MatrixRotation();
-            case "Sloth" -> new NeuroRotation(predictor, 70, 10);
+            case "Sloth" -> slothRotation;
             default -> new SnapRotation();
         };
     }
-
     private Vec3d getTargetVector(LivingEntity target) {
         if (target == null) return Vec3d.ZERO;
         if (usingElytraTarget()) {
@@ -219,5 +236,16 @@ public class AuraModule extends Module {
 
     private boolean usingElytraTarget() {
         return target != null && ElytraTargetModule.getInstance().elytraRotationProcessor.using();
+    }
+
+    /**
+     * Сбрасывает блокировку ротации, когда цель потеряна.
+     * Позволяет персонажу вернуться к нормальному управлению камерой.
+     */
+    private void releaseRotationLock() {
+        RotationManager.getInstance().getRotationPlanRequestProcessor().clearTasksForProvider(this);
+        RotationManager.getInstance().setLastRotationPlan(null);
+        // Синхронизируем серверную ротацию с клиентской
+        RotationManager.getInstance().forceSyncToServer();
     }
 }

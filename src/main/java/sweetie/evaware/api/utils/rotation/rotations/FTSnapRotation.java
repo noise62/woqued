@@ -107,7 +107,7 @@ public class FTSnapRotation extends RotationMode {
 
         // --- Целевые значения джиттера ---
         targetJitterYaw = randomLerp(11, 20) * randomAngle.getYaw();
-        // Инвертируем pitch, чтобы камера всегда смотрела вниз (не вверх)
+        // Pitch джиттер — всегда отрицательный или близкий к нулю (камера вниз)
         targetJitterPitch = -(randomLerp(1, 6) * Math.abs(randomAngle.getPitch())
                 + randomLerp(2, 1) * (float) Math.cos(now / 8000.0));
 
@@ -115,8 +115,8 @@ public class FTSnapRotation extends RotationMode {
         float jitterSmoothSpeed = 1f;
         currentJitterYaw += (targetJitterYaw - currentJitterYaw) * jitterSmoothSpeed;
         currentJitterPitch += (targetJitterPitch - currentJitterPitch) * jitterSmoothSpeed;
-        // Гарантируем что jitterPitch никогда не станет положительным
-        currentJitterPitch = Math.min(currentJitterPitch, 0);
+        // Гарантируем что jitterPitch никогда не станет положительным (> -1)
+        currentJitterPitch = Math.min(currentJitterPitch, -1f);
 
         // --- Финальный расчёт вращения ---
         if (entity != null && aura.target != null) {
@@ -132,8 +132,15 @@ public class FTSnapRotation extends RotationMode {
 
             float lerpSpeed = randomLerp(speed, speed + 0.6F);
 
-            float newYaw = MathHelper.lerp(lerpSpeed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw) + currentJitterYaw;
-            float newPitch = MathHelper.lerp(lerpSpeed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch) + currentJitterPitch;
+            // При атаке НЕ добавляем джиттер — только чистое наведение на цель
+            float newYaw = MathHelper.lerp(lerpSpeed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw);
+            float newPitch = MathHelper.lerp(lerpSpeed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch);
+            
+            // Джиттер только когда НЕ атакуем
+            if (!canAttack) {
+                newYaw += currentJitterYaw;
+                newPitch += currentJitterPitch;
+            }
 
             return new Rotation(newYaw, MathHelper.clamp(newPitch, -90, 90));
 

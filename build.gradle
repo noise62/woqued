@@ -16,6 +16,12 @@ loom {
 
 repositories {
     mavenCentral()
+
+    // Подключаем локальную папку libs для поиска JAR-файлов
+    flatDir {
+        dirs 'libs'
+    }
+
     maven {
         name = "FirstDark"
         url 'https://maven.firstdark.dev/releases'
@@ -50,21 +56,26 @@ dependencies {
     compileOnly "org.projectlombok:lombok:${project.lombok_version}"
     annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
 
-    // ai
+    // ai (эти библиотеки распаковываются прямо в твой мод через задачу jar ниже)
     libImplementation "ai.catboost:catboost-common:${project.ai_version}"
     libImplementation "ai.catboost:catboost-prediction:${project.ai_version}"
 
     // discord
     libImplementation "com.github.donyka:discord-rpc:${project.drpc_version}"
 
-    // satin (встраивается в мод)
+    // --- ВСТРАИВАЕМЫЕ МОДЫ (Jar-in-Jar) ---
+
+    // Встраивание Satin
     modImplementation include("org.ladysnake:satin:${satin_version}")
+
+    // Встраивание IAS (локальный файл из папки libs)
+    // Важно: имя должно совпадать с названием файла IAS-Fabric-1.21.4-9.0.4.jar без расширения
+    modImplementation include(name: 'IAS-Fabric-1.21.4-9.0.4')
+
+    // --------------------------------------
 
     // json
     modImplementation "org.json:json:${project.json_version}"
-
-    // локальные моды для среды разработки (не попадут в итоговый билд вашего мода)
-    modLocalRuntime files("libs/IAS-Fabric-1.21.4-9.0.4.jar")
 
     configurations.libImplementation.dependencies.each {
         implementation(it)
@@ -90,16 +101,9 @@ java {
 jar {
     inputs.property "archivesName", project.base.archivesName
 
+    // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc) и вшивает их классы внутрь твоего мода
     from {
         configurations.libImplementation.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-
-    // Встраиваем IAS напрямую в jar (кроме конфликтов с fabric.mod.json и MANIFEST)
-    from(zipTree("libs/IAS-Fabric-1.21.4-9.0.4.jar")) {
-        exclude "fabric.mod.json"
-        exclude "META-INF/MANIFEST.MF"
-        exclude "META-INF/*.RSA"
-        exclude "META-INF/*.SF"
     }
 
     duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
