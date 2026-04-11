@@ -35,6 +35,7 @@ public class UseTrackerModule extends Module {
     private final BooleanSetting trackTotem = new BooleanSetting("Track Totems").value(true);
     private final BooleanSetting trackPotions = new BooleanSetting("Track Potions").value(true);
     private final BooleanSetting trackConsume = new BooleanSetting("Track Consume").value(true);
+    private final SliderSetting detectionRadius = new SliderSetting("Detection Radius").value(100f).range(10f, 100f).step(1f);
     private final SliderSetting radius = new SliderSetting("Potion Radius").value(100f).range(10f, 100f).step(1f);
 
     private static class PotionData {
@@ -61,15 +62,22 @@ public class UseTrackerModule extends Module {
         super.onDisable();
     }
 
+    public UseTrackerModule() {
+        addSettings(trackTotem, trackPotions, trackConsume, detectionRadius, radius);
+    }
+
     @Override
     public void onEvent() {
         EventListener tickEvent = TickEvent.getInstance().subscribe(new Listener<>(event -> {
             if (mc.player == null || mc.world == null) return;
 
             if (trackConsume.getValue()) {
+                float detectRange = detectionRadius.getValue();
+
                 for (PlayerEntity player : mc.world.getPlayers()) {
                     if (player.getUuid().equals(mc.player.getUuid())) continue;
-                    
+                    if (mc.player.distanceTo(player) > detectRange) continue;
+
                     UUID id = player.getUuid();
                     
                     if (player.isUsingItem()) {
@@ -175,6 +183,7 @@ public class UseTrackerModule extends Module {
                 var entity = pkt.getEntity(mc.world);
                 if (!(entity instanceof PlayerEntity player)) return;
                 if (player.getUuid().equals(mc.player.getUuid())) return;
+                if (mc.player.distanceTo(player) > detectionRadius.getValue()) return;
 
                 ItemStack offHand = player.getOffHandStack();
                 ItemStack mainHand = player.getMainHandStack();
