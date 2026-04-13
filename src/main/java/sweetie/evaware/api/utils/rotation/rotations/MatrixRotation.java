@@ -22,7 +22,7 @@ public class MatrixRotation extends RotationMode {
         float pitchDelta = delta.getPitch();
 
         float yawSpeed = MathUtil.randomInRange(58, 60);
-        float pitchSpeed = entity == null ? Math.abs(pitchDelta) : 0.333f;
+        float pitchSpeed = FunTimeRotation.attack || entity == null ? Math.abs(pitchDelta) : 0.333f;
 
         float pitchStep = Math.max(pitchDelta, (float) (2.0 + Math.random() * 2.0));
         pitchDelta = (pitchDelta > 0) ? pitchStep : -pitchStep;

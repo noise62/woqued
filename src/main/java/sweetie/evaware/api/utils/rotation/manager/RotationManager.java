@@ -70,7 +70,7 @@ public class RotationManager implements QuickImports {
         }));
     }
 
-    private void setRotation(Rotation value) {
+    public void setRotation(Rotation value) {
         previousRotation = (value == null) ? (currentRotation != null ? currentRotation : mc.player != null ? new Rotation(mc.player.getYaw(), mc.player.getPitch()) : Rotation.DEFAULT) : currentRotation;
         currentRotation = value;
     }

@@ -1,17 +1,14 @@
 package sweetie.evaware.client.ui.widget.overlay;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ChatScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.MathHelper;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 import sweetie.evaware.api.utils.animation.AnimationUtil;
+import sweetie.evaware.api.utils.animation.Easing;
+import sweetie.evaware.api.utils.color.ColorUtil;
 import sweetie.evaware.api.utils.color.UIColors;
 import sweetie.evaware.api.utils.math.MathUtil;
 import sweetie.evaware.api.utils.render.RenderUtil;
@@ -19,38 +16,34 @@ import sweetie.evaware.client.features.modules.combat.AuraModule;
 import sweetie.evaware.client.ui.widget.Widget;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class TargetInfoWidget extends Widget {
-    @Override
-    public String getName() {
-        return "Target Info";
-    }
-
-    public TargetInfoWidget() {
-
-        super(135f, 44f);
-    }
 
     private final AnimationUtil showAnimation = new AnimationUtil();
-
     private float healthAnimation = 0f;
-    private float damageAnimation = 0f;
-
+    private float absorptionAnimation = 0f;
+    private float scrollOffset = 0f;
     private LivingEntity target;
+
+    public TargetInfoWidget() {
+        super(30f, 30f);
+    }
+
+    @Override
+    public String getName() {
+        return "Target info";
+    }
 
     @Override
     public void render(MatrixStack matrixStack) {
         update();
-        LivingEntity pretendTarget = getTarget();
+        LivingEntity currentTarget = getTarget();
+        if (currentTarget != null) target = currentTarget;
 
-        if (pretendTarget != null) {
-            target = pretendTarget;
-        }
+        if (showAnimation.getValue() <= 0.0 || target == null) return;
 
-        if (showAnimation.getValue() <= 0.05 || target == null) return;
+        float healthPct = MathHelper.clamp(target.getHealth() / target.getMaxHealth(), 0f, 1f);
+        healthAnimation = MathUtil.interpolate(healthAnimation, healthPct, 0.1f);
 
         float anim = (float) showAnimation.getValue();
         int fullAlpha = (int) (anim * 255f);
@@ -58,161 +51,146 @@ public class TargetInfoWidget extends Widget {
         float x = getDraggable().getX();
         float y = getDraggable().getY();
 
-        float width = 135f;
-        float height = 44f;
+        float paddingX = scaled(4f);
+        float paddingY = scaled(3f);
+        float headSize = scaled(28f);
+        float gapHeadText = scaled(5f);
+        float barHeight = scaled(6f);
+        float barRadius = scaled(1.5f);
 
-        float maxHealth = target.getMaxHealth();
-        float currentHealth = MathHelper.clamp(target.getHealth() + target.getAbsorptionAmount(), 0, maxHealth);
-        float healthPct = currentHealth / maxHealth;
+        float nicknameHeight = scaled(10f);
+        float hpTextHeight = scaled(9f);
+        float gapNickHp = scaled(1f);
+        float gapHpBar = scaled(2f);
+        float textZoneHeight = nicknameHeight + gapNickHp + hpTextHeight + gapHpBar + barHeight;
+        float textZoneWidth = scaled(58f);
 
-        healthAnimation = MathUtil.interpolate(healthAnimation, healthPct, 0.2f);
-        damageAnimation = MathUtil.interpolate(damageAnimation, healthPct, 0.05f);
+        float totalWidth = paddingX + headSize + gapHeadText + textZoneWidth + paddingX;
+        float totalHeight = paddingY * 2f + Math.max(headSize, textZoneHeight);
 
+        RenderUtil.BLUR_RECT.draw(matrixStack, x, y, totalWidth, totalHeight, scaled(7f),
+                new Color(25, 25, 30, (int) (255f * anim)));
 
-        RenderUtil.BLUR_RECT.draw(matrixStack, x, y, width, height, 5f, UIColors.widgetBlur(fullAlpha));
-        RenderUtil.RECT.draw(matrixStack, x, y, width, height, 5f, new Color(20, 20, 20, (int)(180 * anim)));
+        float headX = x + paddingX;
+        float headY = y + (totalHeight - headSize) / 2f;
+        float headRadius = scaled(4f);
 
-
-        if (fullAlpha > 10) {
-            drawTargetModel(matrixStack, x + 20, y + 36, 17, target);
+        float hurtProgress = target.hurtTime / 10f;
+        Color headTint;
+        if (hurtProgress > 0f) {
+            int red = 255;
+            int green = (int) (255f * (1f - hurtProgress));
+            int blue = (int) (255f * (1f - hurtProgress));
+            headTint = new Color(red, green, blue, fullAlpha);
+        } else {
+            headTint = ColorUtil.setAlpha(Color.WHITE, fullAlpha);
         }
-
-
-        float textX = x + 42f;
-        float textY = y + 5f;
-        Color textColor = UIColors.textColor(fullAlpha);
-
-        getSemiBoldFont().drawText(matrixStack, target.getName().getString(), textX, textY, 8.5f, textColor);
-
-        String distText = "Dist: " + String.format("%.1f", mc.player.distanceTo(target));
-        getMediumFont().drawText(matrixStack, distText, textX, textY + 9f, 6f, new Color(180, 180, 180, fullAlpha));
-
-        String hpString = String.format("%.1f", currentHealth);
-        float hpWidth = getSemiBoldFont().getWidth(hpString, 8f);
-        getSemiBoldFont().drawText(matrixStack, hpString, x + width - hpWidth - 5f, textY + 1f, 8f, textColor);
-
-
-        float barX = textX;
-        float barY = y + 21f;
-        float barWidth = width - 42f - 5f;
-        float barHeight = 6.5f;
-        float barRound = 2.5f;
-
-        RenderUtil.RECT.draw(matrixStack, barX, barY, barWidth, barHeight, barRound, new Color(40, 40, 40, fullAlpha));
-
-        if (damageAnimation > healthAnimation) {
-            RenderUtil.RECT.draw(matrixStack, barX, barY, barWidth * damageAnimation, barHeight, barRound, new Color(255, 255, 255, (int)(150 * anim)));
-        }
-
-        Color c1 = UIColors.gradient(0, fullAlpha);
-        Color c2 = UIColors.gradient(90, fullAlpha);
-        RenderUtil.GRADIENT_RECT.draw(matrixStack, barX, barY, barWidth * healthAnimation, barHeight, barRound, c1, c2, c1, c2);
-
 
         if (target instanceof PlayerEntity player) {
-            renderArmor(matrixStack, player, barX, barY + barHeight + 2.5f, fullAlpha);
+            RenderUtil.TEXTURE_RECT.drawHead(matrixStack, player, headX, headY, headSize, headSize,
+                    0f, headRadius, headTint);
         }
 
-        getDraggable().setWidth(width);
-        getDraggable().setHeight(height);
-    }
+        float absorptionPct = MathHelper.clamp(target.getAbsorptionAmount() / 20f, 0f, 1f);
+        absorptionAnimation = MathUtil.interpolate(absorptionAnimation, absorptionPct, 0.1f);
 
-    private void renderArmor(MatrixStack matrices, PlayerEntity player, float x, float y, int alpha) {
-        List<ItemStack> items = new ArrayList<>();
+        float contentX = headX + headSize + gapHeadText;
+        float contentY = y + (totalHeight - textZoneHeight) / 2f;
 
+        String name = target.getName().getString();
+        float nameWidth = getMediumFont().getWidth(name, scaled(9f));
 
-        items.add(player.getOffHandStack());
+        matrixStack.push();
 
+        double scale = mc.getWindow().getScaleFactor();
+        int scissorX = (int) (contentX * scale);
+        int scissorY = (int) (mc.getWindow().getFramebufferHeight() - (contentY + nicknameHeight) * scale);
+        int scissorW = (int) (textZoneWidth * scale);
+        int scissorH = (int) (nicknameHeight * scale);
 
-        items.add(player.getMainHandStack());
+        RenderSystem.enableScissor(scissorX, scissorY, scissorW, scissorH);
 
+        if (nameWidth > textZoneWidth) {
+            float scrollSpeed = 30f;
+            float delta = mc.getRenderTickCounter().getTickDelta(true);
+            scrollOffset += (scrollSpeed * delta) / 20f;
+            float totalScroll = nameWidth + textZoneWidth;
+            if (scrollOffset > totalScroll) scrollOffset -= totalScroll;
 
-        for (ItemStack armor : player.getInventory().armor) {
-            items.add(armor);
+            float drawX = contentX - scrollOffset;
+            getMediumFont().drawText(matrixStack, name, drawX, contentY, scaled(9f),
+                    new Color(255, 255, 255, fullAlpha));
+            getMediumFont().drawText(matrixStack, name, drawX + totalScroll, contentY, scaled(9f),
+                    new Color(255, 255, 255, fullAlpha));
+        } else {
+            scrollOffset = 0f;
+            getMediumFont().drawText(matrixStack, name, contentX, contentY, scaled(9f),
+                    new Color(255, 255, 255, fullAlpha));
         }
 
+        RenderSystem.disableScissor();
+        matrixStack.pop();
 
-
-
-
-        Collections.reverse(items);
-
-        float itemX = x;
-        for (ItemStack stack : items) {
-            if (stack.isEmpty()) continue;
-
-            matrices.push();
-            matrices.translate(itemX, y, 0);
-            matrices.scale(0.65f, 0.65f, 1f);
-
-            DrawContext context = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
-
-            context.getMatrices().push();
-            context.getMatrices().peek().getPositionMatrix().set(matrices.peek().getPositionMatrix());
-            context.getMatrices().peek().getNormalMatrix().set(matrices.peek().getNormalMatrix());
-
-            context.drawItem(stack, 0, 0);
-            context.drawStackOverlay(mc.textRenderer, stack, 0, 0);
-
-            context.getMatrices().pop();
-            context.draw();
-
-            matrices.pop();
-            itemX += 11f;
+        String hpText;
+        float hp = target.getHealth();
+        if (hp == (int) hp) {
+            hpText = "HP: " + (int) hp + ".0";
+        } else {
+            hpText = "HP: " + String.format("%.1f", hp);
         }
-    }
+        float hpTextY = contentY + nicknameHeight + gapNickHp;
+        getSemiBoldFont().drawText(matrixStack, hpText, contentX, hpTextY, scaled(8f),
+                new Color(190, 190, 200, (int) (fullAlpha * 0.85f)));
 
-    private void drawTargetModel(MatrixStack matrices, float x, float y, int size, LivingEntity entity) {
-        Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI);
-        Quaternionf rotationX = new Quaternionf().rotateX((float) (-Math.PI / 6));
-        rotation.mul(rotationX);
+        float barX = contentX;
+        float barY = hpTextY + hpTextHeight + gapHpBar;
+        float barWidth = textZoneWidth;
 
-        float bodyYaw = entity.bodyYaw;
-        float yaw = entity.getYaw();
-        float pitch = entity.getPitch();
-        float prevHeadYaw = entity.prevHeadYaw;
-        float headYaw = entity.headYaw;
+        RenderUtil.RECT.draw(matrixStack, barX, barY, barWidth, barHeight, barRadius,
+                new Color(40, 40, 45, fullAlpha));
 
-        entity.bodyYaw = 180.0F;
-        entity.setYaw(180.0F);
-        entity.setPitch(0.0F);
-        entity.headYaw = 180.0F;
-        entity.prevHeadYaw = 180.0F;
+        float healthWidth = barWidth * healthAnimation;
+        if (healthWidth > 1f) {
+            Color barLeft, barRight;
 
-        DrawContext context = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            if (healthPct > 0.6f) {
+                barLeft = new Color(30, 140, 60, fullAlpha);
+                barRight = new Color(80, 220, 100, fullAlpha);
+            } else if (healthPct > 0.3f) {
 
-        InventoryScreen.drawEntity(
-                context,
-                x, y,
-                size,
-                new Vector3f(0, 0, 0),
-                rotation,
-                null,
-                entity
-        );
+                barLeft = new Color(200, 120, 30, fullAlpha);
+                barRight = new Color(255, 180, 60, fullAlpha);
+            } else {
 
-        context.draw();
+                barLeft = new Color(180, 30, 30, fullAlpha);
+                barRight = new Color(255, 70, 70, fullAlpha);
+            }
 
-        entity.bodyYaw = bodyYaw;
-        entity.setYaw(yaw);
-        entity.setPitch(pitch);
-        entity.prevHeadYaw = prevHeadYaw;
-        entity.headYaw = headYaw;
+            RenderUtil.GRADIENT_RECT.draw(matrixStack, barX, barY, healthWidth, barHeight,
+                    barRadius, barLeft, barRight, barLeft, barRight);
+        }
+
+        if (absorptionAnimation > 0f) {
+            float absWidth = barWidth * absorptionAnimation;
+            Color absLeft = new Color(180, 140, 20, fullAlpha);
+            Color absRight = new Color(255, 215, 50, fullAlpha);
+            RenderUtil.GRADIENT_RECT.draw(matrixStack, barX, barY, absWidth, barHeight,
+                    barRadius, absLeft, absRight, absLeft, absRight);
+        }
+
+        getDraggable().setWidth(totalWidth);
+        getDraggable().setHeight(totalHeight);
     }
 
     private void update() {
         showAnimation.update();
-        showAnimation.run(getTarget() != null ? 1.0 : 0.0, getDuration(), getEasing());
+        showAnimation.run(getTarget() != null ? 1.0 : 0.0, 150L, Easing.LINEAR);
     }
 
     private LivingEntity getTarget() {
         AuraModule aura = AuraModule.getInstance();
-        if (aura.isEnabled() && aura.target != null) {
-            return aura.target;
-        }
-        if (mc.currentScreen instanceof ChatScreen) {
-            return mc.player;
-        }
+        if (aura.isEnabled() && aura.target != null) return aura.target;
+        if (mc.currentScreen instanceof ChatScreen) return mc.player;
         return null;
     }
 }

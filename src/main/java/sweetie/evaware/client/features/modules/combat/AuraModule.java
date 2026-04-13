@@ -37,6 +37,7 @@ public class AuraModule extends Module {
     private final TargetManager targetManager = new TargetManager();
     public final CombatExecutor combatExecutor = new CombatExecutor();
     private final SlothRotation slothRotation = new SlothRotation();
+    private final FunTimeRotation funTimeRotation = new FunTimeRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
             "Grim", "Ft snap", "Really World", "Sloth"
     ).onAction(() -> {
@@ -88,6 +89,9 @@ public class AuraModule extends Module {
         previousTarget = null;
         predictor.close();
         slothRotation.reset();
+        if (aimMode.is("Ft snap")) {
+            funTimeRotation.startRelease();
+        }
         // Сбрасываем ротацию при отключении, чтобы сервер не застревал
         releaseRotationLock();
     }
@@ -141,9 +145,12 @@ public class AuraModule extends Module {
 
     private void updateEventHandler() {
         target = updateTarget();
-        
+
         // Отслеживаем потерю цели
         if (target == null && previousTarget != null) {
+            if (aimMode.is("Ft snap")) {
+                funTimeRotation.startRelease();
+            }
             releaseRotationLock();
         }
         previousTarget = target;
@@ -219,7 +226,7 @@ public class AuraModule extends Module {
 
     private RotationMode getRotationMode() {
         return switch (aimMode.getValue()) {
-            case "Ft snap" -> new FTSnapRotation();
+            case "Ft snap" -> funTimeRotation;
             case "Grim" -> new SnapRotation();
             case "Really World" -> new MatrixRotation();
             case "Sloth" -> slothRotation;
@@ -245,6 +252,18 @@ public class AuraModule extends Module {
     private void releaseRotationLock() {
         RotationManager.getInstance().getRotationPlanRequestProcessor().clearTasksForProvider(this);
         RotationManager.getInstance().setLastRotationPlan(null);
+        RotationManager.getInstance().setRotation(null);
+        
+        // Сбрасываем визуальную ротацию персонажа к текущей клиентской
+        if (mc.player != null) {
+            float clientYaw = mc.player.getYaw();
+            float clientPitch = mc.player.getPitch();
+            mc.player.setYaw(clientYaw);
+            mc.player.setPitch(clientPitch);
+            mc.player.setHeadYaw(clientYaw);
+            mc.player.setBodyYaw(clientYaw);
+        }
+        
         // Синхронизируем серверную ротацию с клиентской
         RotationManager.getInstance().forceSyncToServer();
     }

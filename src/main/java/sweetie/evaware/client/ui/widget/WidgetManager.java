@@ -22,6 +22,7 @@ public class WidgetManager {
                 new PotionsWidget(),
                 new StaffsWidget(),
                 new CooldownsWidget(),
+                new ArrayListWidget(),
 
                 new ArmorWidget(),
 

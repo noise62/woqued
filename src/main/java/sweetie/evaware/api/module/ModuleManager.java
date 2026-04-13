@@ -93,6 +93,8 @@ public class ModuleManager {
                 CapeModule.getInstance(),
                 UseTrackerModule.getInstance(),
                 AutoEcModule.getInstance(),
+                AimAssistModule.getInstance(),
+                TriggerBotModule.getInstance(),
                 FlightModule.getInstance()
         );
 

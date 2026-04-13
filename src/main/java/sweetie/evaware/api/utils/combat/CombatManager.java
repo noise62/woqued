@@ -14,6 +14,7 @@ import sweetie.evaware.api.system.interfaces.QuickImports;
 import sweetie.evaware.api.utils.player.PlayerUtil;
 import sweetie.evaware.api.utils.rotation.RaytracingUtil;
 import sweetie.evaware.api.utils.rotation.rotations.FTSnapRotation;
+import sweetie.evaware.api.utils.rotation.rotations.FunTimeRotation;
 import sweetie.evaware.client.features.modules.movement.SprintModule;
 
 @Getter
@@ -47,6 +48,7 @@ public class CombatManager implements QuickImports {
         };
 
         FTSnapRotation.updateAttackState(canAttack());
+        FunTimeRotation.updateAttackState(canAttack());
 
         if (canAttack()) {
             if (isRaytraceFailed(getRaytraceEntity())) return;
