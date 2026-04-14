@@ -29,6 +29,7 @@ public class RotationManager implements QuickImports {
     private Rotation currentRotation;
     private Rotation previousRotation;
     private Rotation serverRotation = Rotation.DEFAULT;
+    private boolean returning = false;
 
     public void load() {
         VelocityEvent.getInstance().subscribe(new Listener<>(event -> {
@@ -103,27 +104,48 @@ public class RotationManager implements QuickImports {
 
     private void update() {
         RotationPlan activePlan = getCurrentRotationPlan();
+
         if (activePlan == null) {
+            if (currentRotation != null && returning) {
+                Rotation cameraRotation = RotationUtil.fromVec2f(mc.player.getRotationClient());
+                double diff = computeRotationDifference(currentRotation, cameraRotation);
+
+                if (diff < 0.5) {
+                    setRotation(null);
+                    lastRotationPlan = null;
+                    returning = false;
+                } else {
+                    float speed = 0.25f;
+                    float distanceFactor = Math.min(1.0f, (float) diff / 30.0f);
+                    speed = speed + (0.4f * distanceFactor);
+
+                    float yawDiff = MathHelper.wrapDegrees(cameraRotation.getYaw() - currentRotation.getYaw());
+                    float newYaw = currentRotation.getYaw() + yawDiff * speed;
+                    float newPitch = MathHelper.lerp(speed, currentRotation.getPitch(), cameraRotation.getPitch());
+
+                    setRotation(new Rotation(newYaw, newPitch).adjustSensitivity());
+                }
+            }
             return;
         }
 
-        Rotation playerRotation = RotationUtil.fromVec2f(mc.player.getRotationClient());
+        returning = false;
 
-        if (rotationPlanRequestProcessor.fetchActiveTaskValue() == null) {
-            double differenceFromCurrentToPlayer = computeRotationDifference(serverRotation, playerRotation);
-            if (differenceFromCurrentToPlayer < activePlan.resetThreshold()) {
-                if (currentRotation != null) {
-                    mc.player.setYaw(currentRotation.getYaw() + computeAngleDifference(mc.player.getYaw(), currentRotation.getYaw()));
-                    mc.player.setPitch(currentRotation.getPitch() + computeAngleDifference(mc.player.getPitch(), currentRotation.getPitch()));
-                }
+        Rotation clientAngle = RotationUtil.fromVec2f(mc.player.getRotationClient());
+
+        if (lastRotationPlan != null) {
+            double differenceFromCurrentToPlayer = computeRotationDifference(serverRotation, clientAngle);
+            if (rotationPlanRequestProcessor.getResetTickCounter() >= activePlan.ticksUntilReset() && differenceFromCurrentToPlayer < activePlan.resetThreshold()) {
                 setRotation(null);
                 lastRotationPlan = null;
+                rotationPlanRequestProcessor.reset();
                 return;
             }
         }
-        Rotation newRotation = activePlan.nextRotation(currentRotation != null ? currentRotation : playerRotation, rotationPlanRequestProcessor.fetchActiveTaskValue() == null).adjustSensitivity();
+
+        Rotation newRotation = activePlan.nextRotation(currentRotation != null ? currentRotation : clientAngle, rotationPlanRequestProcessor.fetchActiveTaskValue() == null).adjustSensitivity();
         setRotation(newRotation);
-        
+
         if (activePlan.clientLook()) {
             mc.player.setYaw(newRotation.getYaw());
             mc.player.setPitch(newRotation.getPitch());
@@ -135,7 +157,7 @@ public class RotationManager implements QuickImports {
     }
 
     private double computeRotationDifference(Rotation a, Rotation b) {
-        return Math.hypot(MathHelper.abs(computeAngleDifference(a.getPitch(), b.getPitch())), MathHelper.abs((a.getPitch() - b.getPitch())));
+        return Math.hypot(MathHelper.abs(computeAngleDifference(a.getYaw(), b.getYaw())), MathHelper.abs(a.getPitch() - b.getPitch()));
     }
 
     private float computeAngleDifference(float a, float b) {
@@ -158,5 +180,21 @@ public class RotationManager implements QuickImports {
                     false
             ));
         }
+    }
+
+    /**
+     * Запускает плавное возвращение камеры к нормальному управлению.
+     * В Rich-Modern startReturning() пустой - плавный возврат происходит
+     * автоматически через isResetting в nextRotation когда задача истекает.
+     */
+    public void startReturning() {
+        // Ничего не делаем - плавный возврат обрабатывается через isResetting
+    }
+
+    /**
+     * Сбрасывает все задачи ротации и возвращает камеру.
+     */
+    public void clear() {
+        rotationPlanRequestProcessor.clearAll();
     }
 }

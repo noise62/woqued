@@ -24,17 +24,17 @@ public class FunTimeRotation extends RotationMode {
     public static boolean firstAttack = true;
 
     private boolean releasing = false;
-    private float releaseYaw = 0f;
-    private float releasePitch = 0f;
 
     public FunTimeRotation() {
         super("FunTime");
     }
 
+    /**
+     * Плавное возвращение теперь обрабатывается в process() при entity == null.
+     * Оставлен для обратной совместимости.
+     */
     public void startRelease() {
         releasing = true;
-        releaseYaw = mc.player.getYaw();
-        releasePitch = mc.player.getPitch();
     }
 
     public boolean isReleasing() {
@@ -64,18 +64,28 @@ public class FunTimeRotation extends RotationMode {
     @Override
     public Rotation process(Rotation currentRotation, Rotation targetRotation, Vec3d vec3d, Entity entity) {
         if (entity == null) {
-            if (!releasing) {
-                startRelease();
-            }
+            // Плавное возвращение камеры к камере игрока (как в Rich FTAngle)
+            Rotation cameraRotation = RotationUtil.fromVec2f(mc.player.getRotationClient());
+            Rotation delta = RotationUtil.calculateDelta(currentRotation, cameraRotation);
+            float yawDelta = delta.getYaw();
+            float pitchDelta = delta.getPitch();
+            float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
+
+            float speedFactor = MathHelper.clamp(1f - (rotationDifference / 180.0f), 0.05f, 0.4f);
+            float speed = 0.35F * speedFactor;
+
+            float lineYaw = rotationDifference > 0 ? (Math.abs(yawDelta / rotationDifference) * 360) : 360;
+            float linePitch = rotationDifference > 0 ? (Math.abs(pitchDelta / rotationDifference) * 180) : 180;
+
+            float moveYaw = MathHelper.clamp(yawDelta, -lineYaw, lineYaw);
+            float movePitch = MathHelper.clamp(pitchDelta, -linePitch, linePitch);
+
+            return new Rotation(
+                    MathHelper.lerp(speed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw),
+                    MathHelper.lerp(speed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch)
+            );
         } else {
             releasing = false;
-        }
-
-        if (releasing) {
-            float releaseSpeed = 0.15f;
-            releaseYaw = MathUtil.interpolate(releaseYaw, mc.player.getYaw(), releaseSpeed);
-            releasePitch = MathUtil.interpolate(releasePitch, mc.player.getPitch(), releaseSpeed);
-            return new Rotation(releaseYaw, releasePitch);
         }
 
         if (attackedTicks > 0) attackedTicks = Math.max(attackedTicks - 1, 0);

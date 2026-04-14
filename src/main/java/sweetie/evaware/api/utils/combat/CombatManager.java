@@ -13,7 +13,6 @@ import sweetie.evaware.api.event.events.player.move.SprintEvent;
 import sweetie.evaware.api.system.interfaces.QuickImports;
 import sweetie.evaware.api.utils.player.PlayerUtil;
 import sweetie.evaware.api.utils.rotation.RaytracingUtil;
-import sweetie.evaware.api.utils.rotation.rotations.FTSnapRotation;
 import sweetie.evaware.api.utils.rotation.rotations.FunTimeRotation;
 import sweetie.evaware.client.features.modules.movement.SprintModule;
 
@@ -47,7 +46,6 @@ public class CombatManager implements QuickImports {
             default -> SprintManager.SprintType.NONE;
         };
 
-        FTSnapRotation.updateAttackState(canAttack());
         FunTimeRotation.updateAttackState(canAttack());
 
         if (canAttack()) {

@@ -89,11 +89,8 @@ public class AuraModule extends Module {
         previousTarget = null;
         predictor.close();
         slothRotation.reset();
-        if (aimMode.is("Ft snap")) {
-            funTimeRotation.startRelease();
-        }
-        // Сбрасываем ротацию при отключении, чтобы сервер не застревал
-        releaseRotationLock();
+        // Плавное возвращение камеры при отключении
+        RotationManager.getInstance().startReturning();
     }
     @Override
     public void onEnable() {
@@ -132,10 +129,6 @@ public class AuraModule extends Module {
 
     private void postRotMoveEventHandler() {
         if (target == null) {
-            // Если цель потеряна - сбрасываем ротацию
-            if (previousTarget != null) {
-                releaseRotationLock();
-            }
             return;
         }
         Vec3d attackVector = getTargetVector(target);
@@ -146,13 +139,6 @@ public class AuraModule extends Module {
     private void updateEventHandler() {
         target = updateTarget();
 
-        // Отслеживаем потерю цели
-        if (target == null && previousTarget != null) {
-            if (aimMode.is("Ft snap")) {
-                funTimeRotation.startRelease();
-            }
-            releaseRotationLock();
-        }
         previousTarget = target;
         
         if (target == null) return;
@@ -202,7 +188,13 @@ public class AuraModule extends Module {
 
         if (mc.player.getEyePos().distanceTo(
                 RotationUtil.rayCastBox(target, getTargetVector(target))
-        ) > getAttackDistance()) return;
+        ) > getAttackDistance()) {
+            // Отводка когда не хватает дистанции для удара но таргет не потерян (аналогично Ft snap logic)
+            if (aimMode.is("Ft snap")) {
+                funTimeRotation.startRelease();
+            }
+            return;
+        }
 
         combatExecutor.performAttack();
     }
@@ -243,28 +235,5 @@ public class AuraModule extends Module {
 
     private boolean usingElytraTarget() {
         return target != null && ElytraTargetModule.getInstance().elytraRotationProcessor.using();
-    }
-
-    /**
-     * Сбрасывает блокировку ротации, когда цель потеряна.
-     * Позволяет персонажу вернуться к нормальному управлению камерой.
-     */
-    private void releaseRotationLock() {
-        RotationManager.getInstance().getRotationPlanRequestProcessor().clearTasksForProvider(this);
-        RotationManager.getInstance().setLastRotationPlan(null);
-        RotationManager.getInstance().setRotation(null);
-        
-        // Сбрасываем визуальную ротацию персонажа к текущей клиентской
-        if (mc.player != null) {
-            float clientYaw = mc.player.getYaw();
-            float clientPitch = mc.player.getPitch();
-            mc.player.setYaw(clientYaw);
-            mc.player.setPitch(clientPitch);
-            mc.player.setHeadYaw(clientYaw);
-            mc.player.setBodyYaw(clientYaw);
-        }
-        
-        // Синхронизируем серверную ротацию с клиентской
-        RotationManager.getInstance().forceSyncToServer();
     }
 }

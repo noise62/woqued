@@ -39,6 +39,12 @@ repositories {
             includeGroupByRegex 'dev\\.onyxstudios.*'
         }
     }
+    
+    // Baritone API через JitPack
+    maven {
+        name = 'JitPack'
+        url = 'https://jitpack.io'
+    }
 }
 
 configurations {

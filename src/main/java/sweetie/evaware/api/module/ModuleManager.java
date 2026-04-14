@@ -95,6 +95,7 @@ public class ModuleManager {
                 AutoEcModule.getInstance(),
                 AimAssistModule.getInstance(),
                 TriggerBotModule.getInstance(),
+                WardenHelperModule.getInstance(),
                 FlightModule.getInstance()
         );
 

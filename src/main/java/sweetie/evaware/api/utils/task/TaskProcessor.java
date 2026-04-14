@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 
 public class TaskProcessor<T> {
+    private int resetTickCounter = 0;
     private int tickCounter = 0;
     private final PriorityQueue<Task<T>> activeTasks = new PriorityQueue<>(
             Comparator.<Task<T>>comparingInt(task -> task.priority).reversed()
@@ -13,6 +14,7 @@ public class TaskProcessor<T> {
 
     public void tick(int deltaTime) {
         tickCounter += deltaTime;
+        resetTickCounter += deltaTime;
 
         while (!activeTasks.isEmpty() && activeTasks.peek().expiresIn <= tickCounter) {
             Task<T> task = activeTasks.poll();
@@ -24,10 +26,24 @@ public class TaskProcessor<T> {
         activeTasks.removeIf(t -> t.provider == task.provider);
         task.expiresIn += tickCounter;
         activeTasks.add(task);
+        resetTickCounter = 0;
     }
 
     public void clearTasksForProvider(Module provider) {
         activeTasks.removeIf(t -> t.provider == provider);
+    }
+
+    public void reset() {
+        tickCounter = 0;
+        resetTickCounter = 0;
+    }
+
+    public int getResetTickCounter() {
+        return resetTickCounter;
+    }
+
+    public void clearAll() {
+        activeTasks.clear();
     }
 
     public T fetchActiveTaskValue() {
@@ -36,6 +52,7 @@ public class TaskProcessor<T> {
         }
 
         if (activeTasks.isEmpty()) {
+            resetTickCounter = 0;
             return null;
         }
 
