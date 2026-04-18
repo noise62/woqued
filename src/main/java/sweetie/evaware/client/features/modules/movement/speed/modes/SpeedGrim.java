@@ -4,6 +4,7 @@ import lombok.Getter;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.vehicle.BoatEntity;
 import sweetie.evaware.api.module.setting.ModeSetting;
 import sweetie.evaware.api.utils.math.TimerUtil;
 import sweetie.evaware.api.utils.player.MoveUtil;
@@ -61,7 +62,6 @@ public class SpeedGrim extends SpeedMode {
                     mc.player.addVelocity(forward[0], 0.0, forward[1]);
                 }
             }
-
 
             default -> {
                 if (timerUtil.finished(1100)) {

@@ -20,7 +20,7 @@ import sweetie.evaware.api.utils.combat.TargetManager;
 
 import java.util.Random;
 
-@ModuleRegister(name = "AimAssist", category = Category.COMBAT)
+@ModuleRegister(name = "Aim Assist", category = Category.COMBAT)
 public class AimAssistModule extends Module {
     @Getter private static final AimAssistModule instance = new AimAssistModule();
 

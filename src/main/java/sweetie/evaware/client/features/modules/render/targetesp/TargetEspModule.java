@@ -14,6 +14,8 @@ import sweetie.evaware.api.module.setting.SliderSetting;
 import sweetie.evaware.client.features.modules.render.targetesp.modes.TargetEspComets;
 import sweetie.evaware.client.features.modules.render.targetesp.modes.TargetEspCrystals;
 import sweetie.evaware.client.features.modules.render.targetesp.modes.TargetEspTexture;
+import sweetie.evaware.client.features.modules.render.targetesp.modes.TargetEspCircle;
+import sweetie.evaware.client.features.modules.render.targetesp.modes.TargetEspChains;
 
 @ModuleRegister(name = "Target Esp", category = Category.RENDER)
 public class TargetEspModule extends Module {
@@ -22,15 +24,19 @@ public class TargetEspModule extends Module {
     private final TargetEspComets espComets = new TargetEspComets();
     private final TargetEspTexture espTexture = new TargetEspTexture();
     private final TargetEspCrystals espCrystals = new TargetEspCrystals();
+    private final TargetEspCircle espCircle = new TargetEspCircle();
+    private final TargetEspChains espChains = new TargetEspChains();
 
     private TargetEspMode currentMode = espTexture;
 
     @Getter private final ModeSetting mode = new ModeSetting("Mode").value("Marker").values(
-            "Marker", "Comets", "Crystals"
+            "Marker", "Comets", "Crystals", "Circle", "Chains"
     ).onAction(() -> {
         currentMode = switch (getMode().getValue()) {
             case "Comets" -> espComets;
             case "Crystals" -> espCrystals;
+            case "Circle" -> espCircle;
+            case "Chains" -> espChains;
             default -> espTexture;
         };
     });

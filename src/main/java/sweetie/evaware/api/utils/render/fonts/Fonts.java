@@ -25,6 +25,7 @@ public class Fonts {
     public final Font PS_THIN = get(ps + "/productsans_thin");
 
     public final Font ICONS = get("other/icons");
+    public final Font LOGO = get("other/logo");
 
     public float getMediumThickness() { return 0.07f; }
     public float getBoldThickness() { return 0.1f; }

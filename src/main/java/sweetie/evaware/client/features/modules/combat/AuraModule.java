@@ -36,20 +36,11 @@ public class AuraModule extends Module {
     private final AIPredictor predictor = new AIPredictor();
     private final TargetManager targetManager = new TargetManager();
     public final CombatExecutor combatExecutor = new CombatExecutor();
-    private final SlothRotation slothRotation = new SlothRotation();
     private final FunTimeRotation funTimeRotation = new FunTimeRotation();
+    private final SpookyDuelsRotation spookyDuelsRotation = new SpookyDuelsRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Grim", "Ft snap", "Really World", "Sloth"
-    ).onAction(() -> {
-        if (getAimMode().is("Sloth")) {
-            if (predictor.isLoaded()) {
-                predictor.close();
-            }
-            loadModel();
-        } else {
-            predictor.close();
-        }
-    });
+            "Grim", "Ft snap", "Really World", "Spooky Duels"
+    );
 
     private final SliderSetting distance = new SliderSetting("Distance").value(3f).range(2.5f, 6f).step(0.1f);
     private final SliderSetting preDistance = new SliderSetting("Pre distance").value(0.3f).range(0f, 3f).step(0.1f);
@@ -88,7 +79,6 @@ public class AuraModule extends Module {
         target = null;
         previousTarget = null;
         predictor.close();
-        slothRotation.reset();
         // Плавное возвращение камеры при отключении
         RotationManager.getInstance().startReturning();
     }
@@ -96,9 +86,6 @@ public class AuraModule extends Module {
     public void onEnable() {
         targetManager.releaseTarget();
         target = null;
-        if (aimMode.is("Sloth") && !predictor.isLoaded()) {
-            loadModel();
-        }
     }
 
     public void loadModel() {
@@ -118,9 +105,6 @@ public class AuraModule extends Module {
         }));
 
         EventListener attackEvent = AttackEvent.getInstance().subscribe(new Listener<>(event -> {
-            if (aimMode.is("Sloth")) {
-                slothRotation.onAttack();
-            }
             AuraUtil.onAttack(aimMode.getValue());
         }));
         addEvents(predictor.getEventListeners());
@@ -221,7 +205,7 @@ public class AuraModule extends Module {
             case "Ft snap" -> funTimeRotation;
             case "Grim" -> new SnapRotation();
             case "Really World" -> new MatrixRotation();
-            case "Sloth" -> slothRotation;
+            case "Spooky Duels" -> spookyDuelsRotation;
             default -> new SnapRotation();
         };
     }

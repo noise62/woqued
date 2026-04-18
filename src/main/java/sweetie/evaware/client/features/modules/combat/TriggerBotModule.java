@@ -20,7 +20,7 @@ import sweetie.evaware.api.module.setting.SliderSetting;
 import sweetie.evaware.api.utils.combat.ClickScheduler;
 import sweetie.evaware.api.utils.combat.TargetManager;
 
-@ModuleRegister(name = "TriggerBot", category = Category.COMBAT)
+@ModuleRegister(name = "Trigger Bot", category = Category.COMBAT)
 public class TriggerBotModule extends Module {
     @Getter private static final TriggerBotModule instance = new TriggerBotModule();
 
