@@ -1,0 +1,129 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/evaware.accesswidener")
+}
+
+repositories {
+    mavenCentral()
+
+    // Подключаем локальную папку libs для поиска JAR-файлов
+    flatDir {
+        dirs 'libs'
+    }
+
+    maven {
+        name = "FirstDark"
+        url 'https://maven.firstdark.dev/releases'
+    }
+    maven {
+        name = "Jitpack"
+        url = uri("https://jitpack.io")
+    }
+    maven {
+        name = 'Ladysnake Mods'
+        url = 'https://maven.ladysnake.org/releases'
+        content {
+            includeGroup 'io.github.ladysnake'
+            includeGroup 'org.ladysnake'
+            includeGroupByRegex 'dev\\.onyxstudios.*'
+        }
+    }
+    
+    // Baritone API через JitPack
+    maven {
+        name = 'JitPack'
+        url = 'https://jitpack.io'
+    }
+}
+
+configurations {
+    libImplementation
+}
+
+dependencies {
+    // minecraft and fabric
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // lombok
+    compileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+
+    // ai (эти библиотеки распаковываются прямо в твой мод через задачу jar ниже)
+    libImplementation "ai.catboost:catboost-common:${project.ai_version}"
+    libImplementation "ai.catboost:catboost-prediction:${project.ai_version}"
+
+    // discord
+    libImplementation "com.github.donyka:discord-rpc:${project.drpc_version}"
+
+    // --- ВСТРАИВАЕМЫЕ МОДЫ (Jar-in-Jar) ---
+
+    // Встраивание Satin
+    modImplementation include("org.ladysnake:satin:${satin_version}")
+
+    // Встраивание IAS (локальный файл из папки libs)
+    // Важно: имя должно совпадать с названием файла IAS-Fabric-1.21.4-9.0.4.jar без расширения
+    modImplementation include(name: 'IAS-Fabric-1.21.4-9.0.4')
+
+    // --------------------------------------
+
+    // json
+    modImplementation "org.json:json:${project.json_version}"
+
+    configurations.libImplementation.dependencies.each {
+        implementation(it)
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+}
+
+jar {
+    inputs.property "archivesName", project.base.archivesName
+
+    // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc) и вшивает их классы внутрь твоего мода
+    from {
+        configurations.libImplementation.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+
+    from("LICENSE") {
+        rename { "${it}_${inputs.properties.archivesName}"}
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+}

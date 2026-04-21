@@ -1,0 +1,83 @@
+package worst.woqued.api.utils.task;
+
+import worst.woqued.api.module.Module;
+
+import java.util.Comparator;
+import java.util.PriorityQueue;
+
+public class TaskProcessor<T> {
+    private int resetTickCounter = 0;
+    private int tickCounter = 0;
+    private final PriorityQueue<Task<T>> activeTasks = new PriorityQueue<>(
+            Comparator.<Task<T>>comparingInt(task -> task.priority).reversed()
+    );
+
+    public void tick(int deltaTime) {
+        tickCounter += deltaTime;
+        resetTickCounter += deltaTime;
+
+        while (!activeTasks.isEmpty() && activeTasks.peek().expiresIn <= tickCounter) {
+            Task<T> task = activeTasks.poll();
+            task.run();
+        }
+    }
+
+    public void addTask(Task<T> task) {
+        activeTasks.removeIf(t -> t.provider == task.provider);
+        task.expiresIn += tickCounter;
+        activeTasks.add(task);
+        resetTickCounter = 0;
+    }
+
+    public void clearTasksForProvider(Module provider) {
+        activeTasks.removeIf(t -> t.provider == provider);
+    }
+
+    public void reset() {
+        tickCounter = 0;
+        resetTickCounter = 0;
+    }
+
+    public int getResetTickCounter() {
+        return resetTickCounter;
+    }
+
+    public void clearAll() {
+        activeTasks.clear();
+    }
+
+    public T fetchActiveTaskValue() {
+        while (!activeTasks.isEmpty() && (activeTasks.peek().expiresIn <= tickCounter || !activeTasks.peek().provider.isEnabled())) {
+            activeTasks.poll();
+        }
+
+        if (activeTasks.isEmpty()) {
+            resetTickCounter = 0;
+            return null;
+        }
+
+        return activeTasks.peek().value;
+    }
+
+    public static class Task<T> {
+        public int expiresIn;
+        public final int priority;
+        public final Module provider;
+        public final T value;
+
+        public Task(int expiresIn, int priority, Module provider, T value) {
+            this.expiresIn = expiresIn;
+            this.priority = priority;
+            this.provider = provider;
+            this.value = value;
+        }
+
+        public void run() {
+        }
+
+        @Override
+        public String toString() {
+            return "Task(expiresIn=" + expiresIn + ", priority=" + priority + ", provider=" + provider + ", value=" + value + ")";
+        }
+    }
+}
