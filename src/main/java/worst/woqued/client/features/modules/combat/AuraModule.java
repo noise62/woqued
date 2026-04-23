@@ -1,0 +1,349 @@
+package worst.woqued.client.features.modules.combat;
+
+import lombok.Getter;
+import net.minecraft.client.input.KeyboardInput;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import worst.woqued.api.event.Listener;
+import worst.woqued.api.event.EventListener;
+import worst.woqued.api.event.events.other.RotationUpdateEvent;
+import worst.woqued.api.event.events.player.world.AttackEvent;
+import worst.woqued.api.event.events.player.other.UpdateEvent;
+import worst.woqued.api.module.Category;
+import worst.woqued.api.module.Module;
+import worst.woqued.api.module.ModuleRegister;
+import worst.woqued.api.module.setting.BooleanSetting;
+import worst.woqued.api.module.setting.ModeSetting;
+import worst.woqued.api.module.setting.MultiBooleanSetting;
+import worst.woqued.api.module.setting.SliderSetting;
+import worst.woqued.api.system.backend.SharedClass;
+import worst.woqued.api.utils.combat.CombatExecutor;
+import worst.woqued.api.utils.combat.TargetManager;
+import worst.woqued.api.utils.neuro.AIPredictor;
+import worst.woqued.api.utils.player.DirectionalInput;
+import worst.woqued.api.utils.player.MoveUtil;
+import worst.woqued.api.utils.rotation.RotationUtil;
+import worst.woqued.api.utils.rotation.misc.AuraUtil;
+import worst.woqued.api.utils.rotation.manager.Rotation;
+import worst.woqued.api.utils.rotation.manager.RotationManager;
+import worst.woqued.api.utils.rotation.manager.RotationMode;
+import worst.woqued.api.utils.rotation.manager.RotationPlan;
+import worst.woqued.api.utils.rotation.manager.RotationStrategy;
+import worst.woqued.api.utils.rotation.rotations.*;
+import worst.woqued.api.utils.rotation.rotations.*;
+import worst.woqued.api.utils.task.TaskPriority;
+import worst.woqued.client.features.modules.combat.elytratarget.ElytraTargetModule;
+@ModuleRegister(name = "Aura", category = Category.COMBAT)
+public class AuraModule extends Module {
+    private static final AuraModule instance = new AuraModule();
+
+    public static AuraModule getInstance() {
+        return instance;
+    }
+
+    private final AIPredictor predictor = new AIPredictor();
+    private final TargetManager targetManager = new TargetManager();
+    public CombatExecutor combatExecutor = new CombatExecutor();
+
+    public CombatExecutor getCombatExecutor() {
+        return combatExecutor;
+    }
+
+    private final FunTimeRotation funTimeRotation = new FunTimeRotation();
+    private final PolarRotation polarRotation = new PolarRotation();
+    @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
+            "Grim", "Ft snap", "Really World", "Polar", "MetaHvH"
+    );
+
+    private final SliderSetting distance = new SliderSetting("Distance").value(3f).range(2.5f, 6f).step(0.1f);
+    private final SliderSetting preDistance = new SliderSetting("Pre distance").value(0.3f).range(0f, 3f).step(0.1f);
+    private final SliderSetting snapSpeed = new SliderSetting("Snap Speed").value(0.75f).range(0.1f, 2f).step(0.05f).setVisible(() -> aimMode.is("Grim"));
+    private final MultiBooleanSetting targets = new MultiBooleanSetting("Targets").value(
+            new BooleanSetting("Players").value(true),
+            new BooleanSetting("Mobs").value(true),
+            new BooleanSetting("Animals").value(true)
+    );
+
+    public final MultiBooleanSetting options = combatExecutor.options();
+    private final BooleanSetting clientLook = new BooleanSetting("Client look").value(false);
+    private final BooleanSetting elytraOverride = new BooleanSetting("Elytra override").value(false);
+    private final SliderSetting elytraDistance = new SliderSetting("Elytra distance").value(4f).range(2.5f, 6f).step(0.1f).setVisible(elytraOverride::getValue);
+    private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
+    
+    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Free").values("Focus", "Free");
+
+    public LivingEntity target;
+    private LivingEntity previousTarget = null;
+
+    public AuraModule() {
+        addSettings(aimMode, distance, preDistance, snapSpeed, targets, options, clientLook,
+                elytraOverride, elytraDistance, elytraPreDistance, moveCorrection
+        );
+    }
+
+    public float getPreDistance() {
+        return (mc.player.isGliding() && elytraOverride.getValue()) ? elytraPreDistance.getValue() : preDistance.getValue();
+    }
+
+    public float getAttackDistance() {
+        return (mc.player.isGliding() && elytraOverride.getValue()) ? elytraDistance.getValue() : distance.getValue();
+    }
+
+    public float getSnapSpeed() {
+        return snapSpeed.getValue();
+    }
+
+    @Override
+    public void onDisable() {
+        targetManager.releaseTarget();
+        target = null;
+        previousTarget = null;
+        predictor.close();
+        // Плавное возвращение камеры при отключении
+        RotationManager.getInstance().startReturning();
+    }
+    @Override
+    public void onEnable() {
+        targetManager.releaseTarget();
+        target = null;
+    }
+
+    public void loadModel() {
+        predictor.loadModel("Default");
+    }
+
+    @Override
+    public void onEvent() {
+        predictor.onEvent();
+
+        EventListener eventUpdate = UpdateEvent.getInstance().subscribe(new Listener<>(event -> {
+            updateEventHandler();
+        }));
+
+        EventListener rotationUpdateEvent = RotationUpdateEvent.getInstance().subscribe(new Listener<>(event -> {
+            postRotMoveEventHandler();
+        }));
+
+        EventListener attackEvent = AttackEvent.getInstance().subscribe(new Listener<>(event -> {
+            AuraUtil.onAttack(aimMode.getValue());
+        }));
+        addEvents(predictor.getEventListeners());
+        addEvents(eventUpdate, rotationUpdateEvent, attackEvent);
+    }
+
+    private void postRotMoveEventHandler() {
+        if (target == null) {
+            return;
+        }
+        Vec3d attackVector = getTargetVector(target);
+        Rotation rotation = RotationUtil.fromVec3d(attackVector.subtract(mc.player.getEyePos()));
+        rotateToTarget(target, attackVector, rotation);
+    }
+
+    private void updateEventHandler() {
+        target = updateTarget();
+
+        previousTarget = target;
+        
+        if (target == null) return;
+
+        if (RotationUtil.getSpot(target).distanceTo(mc.player.getEyePos()) > getAttackDistance() + getPreDistance()) {
+            targetManager.releaseTarget();
+            return;
+        }
+
+        if (target != null) {
+            attackTarget(target);
+        }
+    }
+
+    /**
+     * МОДИФИЦИРОВАННЫЙ МЕТОД: Теперь проверяет AntiBot
+     */
+    private LivingEntity updateTarget() {
+        TargetManager.EntityFilter filter = new TargetManager.EntityFilter(targets.getList());
+        targetManager.searchTargets(mc.world.getEntities(), getAttackDistance() + getPreDistance());
+
+        // Добавляем проверку AntiBot в валидацию
+        targetManager.validateTarget(entity -> {
+            // Сначала базовая проверка (игроки/мобы/животные)
+            if (!filter.isValid(entity)) return false;
+
+            // Если AntiBot включен и считает сущность ботом - пропускаем
+            if (AntiBotModule.getInstance().isEnabled() && AntiBotModule.getInstance().isBot(entity)) {
+                return false;
+            }
+
+            return true;
+        });
+
+        return targetManager.getCurrentTarget();
+    }
+
+    private void attackTarget(LivingEntity target) {
+        combatExecutor.combatManager().configurable(
+                new CombatExecutor.CombatConfigurable(
+                        target,
+                        RotationManager.getInstance().getRotation(),
+                        distance.getValue(),
+                        options.getList()
+                )
+        );
+
+        if (mc.player.getEyePos().distanceTo(
+                RotationUtil.rayCastBox(target, getTargetVector(target))
+        ) > getAttackDistance()) {
+            // Отводка когда не хватает дистанции для удара но таргет не потерян (аналогично Ft snap logic)
+            if (aimMode.is("Ft snap")) {
+                funTimeRotation.startRelease();
+            }
+            return;
+        }
+
+        combatExecutor.performAttack();
+    }
+
+    private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {
+        RotationStrategy configurable = new RotationStrategy(getRotationMode(), true, moveCorrection.is("Free")).clientLook(clientLook.getValue());
+
+        boolean noHitRule = (!combatExecutor.combatManager().canAttack());
+
+        if (usingElytraTarget() && ElytraTargetModule.getInstance().elytraRotationProcessor.customRotations.getValue()) return;
+
+        if (noHitRule && aimMode.is("Snap")) {
+            if (!moveCorrection.is("Focus"))
+                return;
+            else rotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
+        }
+
+        RotationManager.getInstance().addRotation(new Rotation.VecRotation(rotation, targetVec), target, configurable, TaskPriority.HIGH, this);
+    }
+
+    private final MetaHvHRotation metaHvHRotation = new MetaHvHRotation();
+
+    private RotationMode getRotationMode() {
+        return switch (aimMode.getValue()) {
+            case "Ft snap" -> funTimeRotation;
+            case "Grim" -> new SnapRotation();
+            case "Really World" -> new MatrixRotation();
+            case "Polar" -> polarRotation;
+            case "MetaHvH" -> metaHvHRotation;
+            default -> new SnapRotation();
+        };
+    }
+    private Vec3d getTargetVector(LivingEntity target) {
+        if (target == null) return Vec3d.ZERO;
+        if (usingElytraTarget()) {
+            return ElytraTargetModule.getInstance().elytraRotationProcessor.getPredictedPos(target);
+        }
+        return AuraUtil.getAimpoint(target, aimMode.getValue());
+    }
+
+    private boolean usingElytraTarget() {
+        return target != null && ElytraTargetModule.getInstance().elytraRotationProcessor.using();
+    }
+
+    /**
+     * Коррекция движения при наведении на цель (Focus режим)
+     */
+    public DirectionalInput transformDirectionForTargeting(DirectionalInput input) {
+        net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
+        if (player == null || target == null) {
+            return input;
+        }
+
+        float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
+        float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
+
+        // Если не идем вперед, не применяем коррекцию
+        if (z != 1) {
+            return input;
+        }
+
+        // Если уже идем строго вперёд, не меняем
+        if (x != 0) {
+            return input;
+        }
+
+        Vec3d position = target.getPos();
+        double deltaX = position.x - player.getX();
+        double deltaZ = position.z - player.getZ();
+
+        double angleToTarget = Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0;
+        angleToTarget = MathHelper.wrapDegrees(angleToTarget);
+
+        float yaw = player.getYaw();
+        float bestForward = 0F;
+        float bestStrafe = 0F;
+        float minDifference = Float.MAX_VALUE;
+
+        for (float forward = -1F; forward <= 1F; forward += 1F) {
+            for (float strafe = -1F; strafe <= 1F; strafe += 1F) {
+                if (forward == 0F && strafe == 0F) {
+                    continue;
+                }
+
+                double moveAngle = MoveUtil.direction(yaw, forward, strafe);
+                moveAngle = Math.toDegrees(moveAngle);
+                moveAngle = MathHelper.wrapDegrees(moveAngle);
+
+                double difference = Math.abs(MathHelper.wrapDegrees(angleToTarget - moveAngle));
+                difference = Math.min(difference, 360 - difference);
+
+                if (difference < minDifference) {
+                    minDifference = (float) difference;
+                    bestForward = forward;
+                    bestStrafe = strafe;
+                }
+            }
+        }
+        return new DirectionalInput(bestForward, bestStrafe);
+    }
+
+    /**
+     * Свободная коррекция движения (Free режим)
+     */
+    public DirectionalInput transformDirectionForFreeMove(DirectionalInput input, Rotation rotation) {
+        net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
+        if (player == null || rotation == null) {
+            return input;
+        }
+
+        float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
+        float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
+
+        float deltaYaw = player.getYaw() - rotation.getYaw();
+        float radians = deltaYaw * 0.017453292f;
+
+        float newX = x * MathHelper.cos(radians) - z * MathHelper.sin(radians);
+        float newZ = z * MathHelper.cos(radians) + x * MathHelper.sin(radians);
+
+        int movementSideways = Math.round(newX);
+        int movementForward = Math.round(newZ);
+
+        return new DirectionalInput(movementForward, movementSideways);
+    }
+
+    /**
+     * Основная точка входа для коррекции движения
+     */
+    public DirectionalInput transformDirection(DirectionalInput input, RotationPlan rotationPlan, Rotation rotation) {
+        if (rotationPlan == null || rotation == null) {
+            return input;
+        }
+
+        if (!rotationPlan.moveCorrection()) {
+            return input;
+        }
+
+        // Проверяем режим коррекции движения
+        if (moveCorrection.is("Focus")) {
+            return transformDirectionForTargeting(input);
+        } else if (moveCorrection.is("Free") && rotationPlan.freeMoveCorrection()) {
+            return transformDirectionForFreeMove(input, rotation);
+        }
+
+        return input;
+    }
+}

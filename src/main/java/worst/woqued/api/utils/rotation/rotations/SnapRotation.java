@@ -1,0 +1,50 @@
+package worst.woqued.api.utils.rotation.rotations;
+
+import net.minecraft.entity.Entity;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import worst.woqued.api.utils.rotation.RotationUtil;
+import worst.woqued.api.utils.rotation.manager.Rotation;
+import worst.woqued.api.utils.rotation.manager.RotationMode;
+import worst.woqued.client.features.modules.combat.AuraModule;
+
+/**
+ * Snap — мгновенное наведение на цель при атаке с плавным возвратом камеры.
+ */
+public class SnapRotation extends RotationMode {
+
+    public SnapRotation() {
+        super("Snap");
+    }
+
+    @Override
+    public Rotation process(Rotation currentRotation, Rotation targetRotation, Vec3d vec3d, Entity entity) {
+        AuraModule aura = AuraModule.getInstance();
+
+        boolean canAttack = entity != null && aura.combatExecutor.combatManager().canAttack();
+
+        Rotation delta = RotationUtil.calculateDelta(currentRotation, canAttack ? targetRotation : RotationUtil.fromVec2f(mc.player.getRotationClient()));
+        float yawDelta = delta.getYaw();
+        float pitchDelta = delta.getPitch();
+        float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
+
+        if (rotationDifference < 0.1f) {
+            return canAttack ? targetRotation : RotationUtil.fromVec2f(mc.player.getRotationClient());
+        }
+
+        float speedFactor = MathHelper.clamp(1f - (rotationDifference / 180.0f), 0.1f, 0.5f);
+        float baseSpeed = aura.getSnapSpeed();
+        float speed = canAttack ? baseSpeed * speedFactor : baseSpeed * 0.65F * speedFactor;
+
+        float lineYaw = rotationDifference > 0 ? (Math.abs(yawDelta / rotationDifference) * 360) : 360;
+        float linePitch = rotationDifference > 0 ? (Math.abs(pitchDelta / rotationDifference) * 180) : 180;
+
+        float moveYaw = MathHelper.clamp(yawDelta, -lineYaw, lineYaw);
+        float movePitch = MathHelper.clamp(pitchDelta, -linePitch, linePitch);
+
+        return new Rotation(
+                MathHelper.lerp(speed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw),
+                MathHelper.lerp(speed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch)
+        );
+    }
+}
