@@ -206,6 +206,94 @@ public class InventoryUtil implements QuickImports {
         return -1;
     }
 
+    public int findBestElytraSlot() {
+        if (mc.player == null) return -1;
+        for (int i = 0; i < 36; i++) {
+            if (mc.player.getInventory().getStack(i).getItem() == Items.ELYTRA) {
+                return i < 9 ? i + 36 : i;
+            }
+        }
+        return -1;
+    }
+
+    public int findBestChestplateSlot() {
+        if (mc.player == null) return -1;
+        Item[] chestplates = {
+            Items.NETHERITE_CHESTPLATE,
+            Items.DIAMOND_CHESTPLATE,
+            Items.IRON_CHESTPLATE,
+            Items.GOLDEN_CHESTPLATE,
+            Items.CHAINMAIL_CHESTPLATE,
+            Items.LEATHER_CHESTPLATE
+        };
+        for (Item chestplate : chestplates) {
+            for (int i = 0; i < 36; i++) {
+                if (mc.player.getInventory().getStack(i).getItem() == chestplate) {
+                    return i < 9 ? i + 36 : i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    public void swapAndUseHvH(Item item) {
+        int invSlot = findItem(item, false);
+        int hbSlot = findItem(item, true);
+
+        if (mc.player.getOffHandStack().isOf(item)) {
+            useItem(Hand.OFF_HAND);
+            return;
+        }
+
+        if (mc.player.getMainHandStack().isOf(item)) {
+            useItem(Hand.MAIN_HAND);
+            return;
+        }
+
+        int oldSlot = mc.player.getInventory().selectedSlot;
+        int bestSlot = findBestSlotInHotBar();
+
+        if (hbSlot != -1) {
+            swapToSlot(hbSlot);
+            useItem(Hand.MAIN_HAND);
+            swapToSlot(oldSlot);
+        } else if (invSlot != -1) {
+            swapSlots(invSlot, bestSlot);
+            swapToSlot(bestSlot);
+            useItem(Hand.MAIN_HAND);
+            swapToSlot(oldSlot);
+            swapSlots(invSlot, bestSlot);
+        }
+    }
+
+    public void swapAndUseLegit(Item item) {
+        int slot = findItem(item, true);
+        if (slot == -1) {
+            slot = findItem(item, false);
+            if (slot == -1) return;
+
+            int bestSlot = findBestSlotInHotBar();
+            if (bestSlot == -1) return;
+
+            swapSlots(slot, bestSlot);
+            slot = bestSlot;
+        }
+
+        int previousSlot = mc.player.getInventory().selectedSlot;
+        mc.player.getInventory().selectedSlot = slot;
+        swapToSlot(slot);
+        useItem(Hand.MAIN_HAND);
+        mc.player.getInventory().selectedSlot = previousSlot;
+    }
+
+    public void swapWithBypassGrim(Runnable action) {
+        action.run();
+    }
+
+    public void swapWithBypassPolar(Runnable action) {
+        action.run();
+    }
+
     @Getter
     @RequiredArgsConstructor
     public static class ItemUsage {

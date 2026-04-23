@@ -246,6 +246,7 @@ public class AuraModule extends Module {
 
     /**
      * Коррекция движения при наведении на цель (Focus режим)
+     * Движение всегда направлено к цели, независимо от взгляда игрока
      */
     public DirectionalInput transformDirectionForTargeting(DirectionalInput input) {
         net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
@@ -256,53 +257,47 @@ public class AuraModule extends Module {
         float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
         float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
 
-        // Если не идем вперед, не применяем коррекцию
-        if (z != 1) {
+        // Если не двигаемся, не применяем коррекцию
+        if (z == 0 && x == 0) {
             return input;
         }
 
-        // Если уже идем строго вперёд, не меняем
-        if (x != 0) {
-            return input;
-        }
+        Vec3d aimPoint = getTargetVector(target);
+        double deltaX = aimPoint.x - player.getX();
+        double deltaZ = aimPoint.z - player.getZ();
 
-        Vec3d position = target.getPos();
-        double deltaX = position.x - player.getX();
-        double deltaZ = position.z - player.getZ();
-
+        // Угол к цели относительно мира
         double angleToTarget = Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0;
         angleToTarget = MathHelper.wrapDegrees(angleToTarget);
 
         float yaw = player.getYaw();
-        float bestForward = 0F;
-        float bestStrafe = 0F;
-        float minDifference = Float.MAX_VALUE;
+        
+        // Вычисляем желаемое направление движения относительно взгляда игрока
+        float relativeAngle = (float)(angleToTarget - yaw);
+        relativeAngle = MathHelper.wrapDegrees(relativeAngle);
 
-        for (float forward = -1F; forward <= 1F; forward += 1F) {
-            for (float strafe = -1F; strafe <= 1F; strafe += 1F) {
-                if (forward == 0F && strafe == 0F) {
-                    continue;
-                }
+        // Конвертируем относительный угол в направление (forward/strafe)
+        float moveForward = MathHelper.cos(relativeAngle * 0.017453292f);
+        float moveStrafe = -MathHelper.sin(relativeAngle * 0.017453292f);
 
-                double moveAngle = MoveUtil.direction(yaw, forward, strafe);
-                moveAngle = Math.toDegrees(moveAngle);
-                moveAngle = MathHelper.wrapDegrees(moveAngle);
+        // Округляем до дискретных значений (-1, 0, 1)
+        int forward = Math.round(moveForward);
+        int strafe = Math.round(moveStrafe);
 
-                double difference = Math.abs(MathHelper.wrapDegrees(angleToTarget - moveAngle));
-                difference = Math.min(difference, 360 - difference);
-
-                if (difference < minDifference) {
-                    minDifference = (float) difference;
-                    bestForward = forward;
-                    bestStrafe = strafe;
-                }
-            }
+        // Сохраняем направление (вперед/назад) от оригинального ввода
+        boolean movingBackwards = input.isBackwards();
+        if (movingBackwards && forward > 0) {
+            forward = -Math.abs(forward);
+        } else if (!movingBackwards && forward < 0) {
+            forward = Math.abs(forward);
         }
-        return new DirectionalInput(bestForward, bestStrafe);
+
+        return new DirectionalInput(forward, strafe);
     }
 
     /**
      * Свободная коррекция движения (Free режим)
+     * Движение сохраняется относительно текущего взгляда игрока, а не целевой ротации
      */
     public DirectionalInput transformDirectionForFreeMove(DirectionalInput input, Rotation rotation) {
         net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
@@ -313,11 +308,19 @@ public class AuraModule extends Module {
         float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
         float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
 
-        float deltaYaw = player.getYaw() - rotation.getYaw();
-        float radians = deltaYaw * 0.017453292f;
+        // Если нет ввода движения, возвращаем как есть
+        if (x == 0 && z == 0) {
+            return input;
+        }
 
-        float newX = x * MathHelper.cos(radians) - z * MathHelper.sin(radians);
-        float newZ = z * MathHelper.cos(radians) + x * MathHelper.sin(radians);
+        // Вычисляем разницу между текущим взглядом и целевой ротацией
+        float deltaYaw = player.getYaw() - rotation.getYaw();
+        float radians = (float) Math.toRadians(deltaYaw);
+
+        // Компенсируем ротацию: поворачиваем вектор движения на -deltaYaw
+        // Чтобы при нажатии "вперед" игрок шел в направлении своего взгляда, а не ротации
+        float newX = x * MathHelper.cos(radians) + z * MathHelper.sin(radians);
+        float newZ = z * MathHelper.cos(radians) - x * MathHelper.sin(radians);
 
         int movementSideways = Math.round(newX);
         int movementForward = Math.round(newZ);
