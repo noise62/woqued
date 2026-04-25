@@ -52,8 +52,9 @@ public class AuraModule extends Module {
 
     private final FunTimeRotation funTimeRotation = new FunTimeRotation();
     private final PolarRotation polarRotation = new PolarRotation();
+    private final AresMineRotation aresMineRotation = new AresMineRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Grim", "Ft snap", "Really World", "Polar", "MetaHvH"
+            "Grim", "Ft snap", "Really World", "Polar", "MetaHvH", "Ares Mine"
     );
 
     private final SliderSetting distance = new SliderSetting("Distance").value(3f).range(2.5f, 6f).step(0.1f);
@@ -229,6 +230,7 @@ public class AuraModule extends Module {
             case "Really World" -> new MatrixRotation();
             case "Polar" -> polarRotation;
             case "MetaHvH" -> metaHvHRotation;
+            case "Ares Mine" -> aresMineRotation;
             default -> new SnapRotation();
         };
     }

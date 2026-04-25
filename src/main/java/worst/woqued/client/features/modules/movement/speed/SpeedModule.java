@@ -14,6 +14,7 @@ import worst.woqued.api.system.backend.Choice;
 import worst.woqued.client.features.modules.movement.speed.modes.SpeedGrim;
 import worst.woqued.client.features.modules.movement.speed.modes.SpeedVanilla;
 import worst.woqued.client.features.modules.movement.speed.modes.SpeedMetaHvH;
+import worst.woqued.client.features.modules.movement.speed.modes.SpeedAresEntity;
 
 @ModuleRegister(name = "Speed", category = Category.MOVEMENT)
 public class SpeedModule extends Module {
@@ -22,9 +23,10 @@ public class SpeedModule extends Module {
     private final SpeedGrim speedGrim = new SpeedGrim(() -> getMode().is("Grim"));
     private final SpeedVanilla speedVanilla = new SpeedVanilla(() -> getMode().is("Vanilla"));
     private final SpeedMetaHvH speedMetaHvH = new SpeedMetaHvH(() -> getMode().is("MetaHvH"));
+    private final SpeedAresEntity speedAresEntity = new SpeedAresEntity(() -> getMode().is("AresEntity"));
 
     private final SpeedMode[] modes = new SpeedMode[]{
-            speedVanilla, speedGrim, speedMetaHvH
+            speedVanilla, speedGrim, speedMetaHvH, speedAresEntity
     };
 
     private SpeedMode currentMode = speedGrim;

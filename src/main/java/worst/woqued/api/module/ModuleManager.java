@@ -104,6 +104,9 @@ public class ModuleManager {
                 AutoDodgeModule.getInstance(),
                 MellModule.getInstance(),
                 TargetStrafeModule.getInstance(),
+                AntiAimModule.getInstance(),
+                ItemScrollerModule.getInstance(),
+                SmoothCameraModule.getInstance(),
                 FlightModule.getInstance()
         );
 

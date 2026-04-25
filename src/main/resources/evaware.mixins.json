@@ -44,7 +44,8 @@
     "render.MixinLivingEntityRenderer",
     "render.MixinPlayerEntityRenderer",
     "render.MixinRenderSystem",
-    "render.MixinWeatherRendering"
+    "render.MixinWeatherRendering",
+    "render.MixinCamera"
   ],
   "mixins": [
   ],
