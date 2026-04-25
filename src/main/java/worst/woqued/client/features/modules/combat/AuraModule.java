@@ -30,8 +30,13 @@ import worst.woqued.api.utils.rotation.manager.RotationManager;
 import worst.woqued.api.utils.rotation.manager.RotationMode;
 import worst.woqued.api.utils.rotation.manager.RotationPlan;
 import worst.woqued.api.utils.rotation.manager.RotationStrategy;
-import worst.woqued.api.utils.rotation.rotations.*;
-import worst.woqued.api.utils.rotation.rotations.*;
+import worst.woqued.api.utils.math.TimerUtil;
+import worst.woqued.api.utils.rotation.rotations.AresMineRotation;
+import worst.woqued.api.utils.rotation.rotations.FunTimeRotation;
+import worst.woqued.api.utils.rotation.rotations.MatrixRotation;
+import worst.woqued.api.utils.rotation.rotations.MetaHvHRotation;
+import worst.woqued.api.utils.rotation.rotations.PolarRotation;
+import worst.woqued.api.utils.rotation.rotations.SnapRotation;
 import worst.woqued.api.utils.task.TaskPriority;
 import worst.woqued.client.features.modules.combat.elytratarget.ElytraTargetModule;
 @ModuleRegister(name = "Aura", category = Category.COMBAT)
@@ -57,6 +62,9 @@ public class AuraModule extends Module {
             "Grim", "Ft snap", "Really World", "Polar", "MetaHvH", "Ares Mine"
     );
 
+    @Getter private final ModeSetting clickMode = new ModeSetting("Click mode").value("1.9").values("1.9", "1.8");
+    @Getter private final SliderSetting cps = new SliderSetting("CPS").value(9f).range(1f, 20f).step(0.5f).setVisible(() -> clickMode.is("1.8"));
+
     private final SliderSetting distance = new SliderSetting("Distance").value(3f).range(2.5f, 6f).step(0.1f);
     private final SliderSetting preDistance = new SliderSetting("Pre distance").value(0.3f).range(0f, 3f).step(0.1f);
     private final SliderSetting snapSpeed = new SliderSetting("Snap Speed").value(0.75f).range(0.1f, 2f).step(0.05f).setVisible(() -> aimMode.is("Grim"));
@@ -76,9 +84,10 @@ public class AuraModule extends Module {
 
     public LivingEntity target;
     private LivingEntity previousTarget = null;
+    private long lastSecondTick = 0;
 
     public AuraModule() {
-        addSettings(aimMode, distance, preDistance, snapSpeed, targets, options, clientLook,
+        addSettings(aimMode, clickMode, cps, distance, preDistance, snapSpeed, targets, options, clientLook,
                 elytraOverride, elytraDistance, elytraPreDistance, moveCorrection
         );
     }
@@ -146,7 +155,7 @@ public class AuraModule extends Module {
         target = updateTarget();
 
         previousTarget = target;
-        
+
         if (target == null) return;
 
         if (RotationUtil.getSpot(target).distanceTo(mc.player.getEyePos()) > getAttackDistance() + getPreDistance()) {
@@ -183,6 +192,10 @@ public class AuraModule extends Module {
     }
 
     private void attackTarget(LivingEntity target) {
+        if (clickMode.is("1.8") && !combatExecutor.combatManager().clickScheduler().isCooldownComplete()) {
+            return;
+        }
+
         combatExecutor.combatManager().configurable(
                 new CombatExecutor.CombatConfigurable(
                         target,
@@ -195,7 +208,6 @@ public class AuraModule extends Module {
         if (mc.player.getEyePos().distanceTo(
                 RotationUtil.rayCastBox(target, getTargetVector(target))
         ) > getAttackDistance()) {
-            // Отводка когда не хватает дистанции для удара но таргет не потерян (аналогично Ft snap logic)
             if (aimMode.is("Ft snap")) {
                 funTimeRotation.startRelease();
             }
@@ -203,6 +215,11 @@ public class AuraModule extends Module {
         }
 
         combatExecutor.performAttack();
+
+        if (clickMode.is("1.8")) {
+            long delay = (long) (1000.0 / cps.getValue());
+            combatExecutor.combatManager().clickScheduler().recalculate(delay);
+        }
     }
 
     private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {

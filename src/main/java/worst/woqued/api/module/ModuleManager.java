@@ -107,6 +107,9 @@ public class ModuleManager {
                 AntiAimModule.getInstance(),
                 ItemScrollerModule.getInstance(),
                 SmoothCameraModule.getInstance(),
+                JesusModule.getInstance(),
+                ScaffoldModule.getInstance(),
+                ChestStealerModule.getInstance(),
                 FlightModule.getInstance()
         );
 
