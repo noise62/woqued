@@ -37,7 +37,6 @@ public class TargetEspModule extends Module {
             case "Crystals" -> espCrystals;
             case "Circle" -> espCircle;
             case "Chains" -> espChains;
-            case "Svinki" -> espPig;
             default -> espTexture;
         };
     });
