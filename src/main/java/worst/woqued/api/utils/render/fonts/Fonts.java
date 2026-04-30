@@ -26,6 +26,7 @@ public class Fonts {
 
     public final Font ICONS = get("other/icons");
     public final Font LOGO = get("other/logo");
+    public final Font WOQUED = get("other/iconswoqued");
 
     public float getMediumThickness() { return 0.07f; }
     public float getBoldThickness() { return 0.1f; }

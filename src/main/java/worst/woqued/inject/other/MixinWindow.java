@@ -1,5 +1,6 @@
 package worst.woqued.inject.other;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.Window;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,12 +18,25 @@ public class MixinWindow {
     @Inject(method = "onWindowSizeChanged", at = @At("RETURN"))
     public void windowResizeHook(long window, int width, int height, CallbackInfo ci) {
         WindowResizeEvent.getInstance().call();
+        if (window == handle) {
+            updateTitle();
+        }
     }
 
     @Inject(method = "onFramebufferSizeChanged", at = @At("RETURN"))
     public void framebufferResizeHook(long window, int width, int height, CallbackInfo callbackInfo) {
         if (window == handle) {
             FramebufferResizeEvent.getInstance().call();
+        }
+    }
+
+    private void updateTitle() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.getSession() != null) {
+            String username = mc.getSession().getUsername();
+            if (username != null) {
+                mc.getWindow().setTitle("Woqued | 1.7.0" );
+            }
         }
     }
 }

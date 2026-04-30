@@ -70,7 +70,6 @@ public class ModuleManager {
                 NoFriendHurtModule.getInstance(),
                 NoEntityTraceModule.getInstance(),
                 ParticlesModule.getInstance(),
-                RecorderModule.getInstance(),
                 HitboxDesyncModule.getInstance(),
                 FastBreakModule.getInstance(),
                 TapeMouseModule.getInstance(),

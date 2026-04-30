@@ -8,13 +8,13 @@ import net.minecraft.util.Identifier;
 import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.other.TextUtil;
 import worst.woqued.api.utils.render.RenderUtil;
+import worst.woqued.api.utils.render.fonts.Fonts;
 import worst.woqued.client.ui.widget.ContainerWidget;
 
 import java.awt.*;
 import java.util.*;
 
 public class CooldownsWidget extends ContainerWidget {
-    // Используем Map для анимаций (ID группы кулдауна -> прогресс 0.0-1.0)
     private final Map<Identifier, Float> animMap = new HashMap<>();
 
     public CooldownsWidget() {
@@ -28,7 +28,7 @@ public class CooldownsWidget extends ContainerWidget {
 
     @Override
     protected Map<String, ContainerElement.ColoredString> getCurrentData() {
-        return null; // Не используется, так как переопределен render
+        return null;
     }
 
     @Override
@@ -38,7 +38,6 @@ public class CooldownsWidget extends ContainerWidget {
         ItemCooldownManager manager = mc.player.getItemCooldownManager();
         float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
 
-        // 1. Собираем активные кулдауны и их названия
         Set<Identifier> activeGroups = new HashSet<>();
         Map<Identifier, String> nameMap = new HashMap<>();
 
@@ -53,7 +52,6 @@ public class CooldownsWidget extends ContainerWidget {
             }
         }
 
-        // 2. Обновление анимаций (точно как в PotionsWidget)
         activeGroups.forEach(id -> {
             float currentAnim = animMap.getOrDefault(id, 0f);
             animMap.put(id, currentAnim + (1f - currentAnim) * 0.15f);
@@ -68,46 +66,57 @@ public class CooldownsWidget extends ContainerWidget {
 
         animMap.entrySet().removeIf(e -> e.getValue() < 0.01f && !activeGroups.contains(e.getKey()));
 
-        // 3. Параметры геометрии
         float x = getDraggable().getX();
         float y = getDraggable().getY();
         float width = getDraggable().getWidth();
         boolean isRightSide = x + (width / 2f) > MinecraftClient.getInstance().getWindow().getScaledWidth() / 2f;
 
-        float h = scaled(14f);
+        float h = scaled(12f);
         float p = scaled(4.5f);
-        float fontSize = scaled(7f);
+        float fontSize = scaled(6f);
         float round = h * 0.25f;
+        float iconPadding = scaled(5f);
 
         String title = "Cooldowns";
+        String icon = "c"; // Иконка для кулдаунов
 
-        // 4. Расчет максимальной ширины (с учетом активных анимаций)
-        float maxW = getMediumFont().getWidth(title, fontSize) + p * 6f;
+        // Расчет максимальной ширины
+        float titleWidth = getMediumFont().getWidth(title, fontSize);
+        float iconWidth = Fonts.WOQUED.getWidth(icon, fontSize);
+        float totalTitleContentWidth = titleWidth + iconPadding + iconWidth;
+
+        float maxW = totalTitleContentWidth + p * 2f;
+
         for (Identifier id : animMap.keySet()) {
             if (animMap.get(id) < 0.05f) continue;
-
             String name = nameMap.getOrDefault(id, "Unknown");
             int remaining = getRemainingCooldownTicks(id, tickDelta);
             String time = TextUtil.getDurationText(remaining);
 
-            float totalRowW = getMediumFont().getWidth(name, fontSize) + getMediumFont().getWidth(time, fontSize) + p * 8f;
+            float nameW = getMediumFont().getWidth(name, fontSize);
+            float timeW = getMediumFont().getWidth(time, fontSize);
+            float totalRowW = nameW + timeW + p * 4f;
             if (totalRowW > maxW) maxW = totalRowW;
         }
 
         float renderX = isRightSide ? (x + width - maxW) : x;
         float currentY = y;
 
-        // 5. Отрисовка заголовка
+        // Рендер заголовка
         RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, h, round, UIColors.widgetBlur());
-        float titleWidth = getMediumFont().getWidth(title, fontSize);
-        getMediumFont().drawGradientText(ms, title,
-                renderX + (maxW / 2f) - (titleWidth / 2f),
-                currentY + h / 2f - fontSize / 2f,
+
+        float centerY = currentY + h / 2f - fontSize / 2f;
+        float currentX = renderX + p;
+
+        getMediumFont().drawText(ms, title, currentX, centerY, fontSize, UIColors.textColor());
+
+        float iconX = renderX + maxW - p - iconWidth;
+        Fonts.WOQUED.drawGradientText(ms, icon, iconX, centerY,
                 fontSize, UIColors.primary(), UIColors.secondary(), maxW / 4f);
 
         currentY += h + 2.5f;
 
-        // 6. Рендер списка кулдаунов
+        // Рендер списка кулдаунов
         for (Identifier id : animMap.keySet()) {
             float anim = animMap.get(id);
             if (anim <= 0.01f) continue;
@@ -115,10 +124,7 @@ public class CooldownsWidget extends ContainerWidget {
             float rowH = h * anim;
             int alpha = (int) (255 * anim);
 
-            // Фон строки
-            Color themeBlur = UIColors.widgetBlur();
-            Color dynamicBg = new Color(themeBlur.getRed(), themeBlur.getGreen(), themeBlur.getBlue(), (int)(themeBlur.getAlpha() * anim));
-            RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, rowH, round, dynamicBg);
+            float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
             if (anim > 0.05f) {
                 String name = nameMap.getOrDefault(id, "Unknown");
@@ -127,21 +133,32 @@ public class CooldownsWidget extends ContainerWidget {
 
                 Color textColor = UIColors.textColor();
                 Color dynamicText = new Color(textColor.getRed(), textColor.getGreen(), textColor.getBlue(), alpha);
-                float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
-                // Отрисовка названия
-                getMediumFont().drawText(ms, name, renderX + p + 2f, textCenterY, fontSize, dynamicText);
+                // Рект для названия
+                float nameTextW = getMediumFont().getWidth(name, fontSize);
+                float nameRectW = nameTextW + scaled(9);
+                float nameRectH = (fontSize + scaled(6f)) * anim;
+                float nameRectX = renderX;
+                float nameRectY = currentY + (rowH / 2f) - (nameRectH / 2f);
 
-                // Отрисовка плашки времени
-                float durTextW = getMediumFont().getWidth(durationText, fontSize);
-                float boxW = durTextW + scaled(9);
-                float boxH = (fontSize + scaled(2.5f)) * anim;
-                float boxX = renderX + maxW - p - boxW;
-                float boxY = currentY + (rowH / 2f) - (boxH / 2f);
-                Color durationBoxColor = new Color(255, 255, 255, (int)(30 * anim));
+                RenderUtil.RECT.draw(ms, nameRectX, nameRectY, nameRectW, nameRectH, 2.5f, UIColors.widgetBlur());
+                getMediumFont().drawText(ms, name,
+                        nameRectX + (nameRectW / 2f) - (nameTextW / 2f),
+                        textCenterY, fontSize, dynamicText);
 
-                RenderUtil.RECT.draw(ms, boxX, boxY, boxW, boxH, 2.5f, durationBoxColor);
-                getMediumFont().drawText(ms, durationText, boxX + (boxW / 2f) - (durTextW / 2f), textCenterY, fontSize, dynamicText);
+                // Рект для времени
+                float timeTextW = getMediumFont().getWidth(durationText, fontSize);
+                float timeRectW = timeTextW + scaled(9);
+                float timeRectH = (fontSize + scaled(6f)) * anim;
+                float gapAfterName = scaled(2f);
+                float timeRectX = nameRectX + nameRectW + gapAfterName;
+                float timeRectY = currentY + (rowH / 2f) - (timeRectH / 2f);
+
+                Color durationBoxColor = new Color(255, 255, 255, (int)(40 * anim));
+                RenderUtil.RECT.draw(ms, timeRectX, timeRectY, timeRectW, timeRectH, 2.5f, durationBoxColor);
+                getMediumFont().drawText(ms, durationText,
+                        timeRectX + (timeRectW / 2f) - (timeTextW / 2f),
+                        textCenterY, fontSize, dynamicText);
             }
 
             currentY += rowH + 1.5f;
@@ -153,7 +170,6 @@ public class CooldownsWidget extends ContainerWidget {
 
     private int getRemainingCooldownTicks(Identifier groupId, float tickDelta) {
         ItemCooldownManager manager = mc.player.getItemCooldownManager();
-        // Используем доступ к entries как в вашем оригинальном файле
         ItemCooldownManager.Entry entry = manager.entries.get(groupId);
 
         if (entry != null) {

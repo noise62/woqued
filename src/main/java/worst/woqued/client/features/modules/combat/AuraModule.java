@@ -20,11 +20,11 @@ import worst.woqued.api.module.setting.SliderSetting;
 import worst.woqued.api.system.backend.SharedClass;
 import worst.woqued.api.utils.combat.CombatExecutor;
 import worst.woqued.api.utils.combat.TargetManager;
-import worst.woqued.api.utils.neuro.AIPredictor;
 import worst.woqued.api.utils.player.DirectionalInput;
 import worst.woqued.api.utils.player.MoveUtil;
 import worst.woqued.api.utils.rotation.RotationUtil;
 import worst.woqued.api.utils.rotation.misc.AuraUtil;
+
 import worst.woqued.api.utils.rotation.manager.Rotation;
 import worst.woqued.api.utils.rotation.manager.RotationManager;
 import worst.woqued.api.utils.rotation.manager.RotationMode;
@@ -35,8 +35,10 @@ import worst.woqued.api.utils.rotation.rotations.AresMineRotation;
 import worst.woqued.api.utils.rotation.rotations.FunTimeRotation;
 import worst.woqued.api.utils.rotation.rotations.MatrixRotation;
 import worst.woqued.api.utils.rotation.rotations.MetaHvHRotation;
-import worst.woqued.api.utils.rotation.rotations.PolarRotation;
+import worst.woqued.api.utils.rotation.rotations.GrimRotation;
 import worst.woqued.api.utils.rotation.rotations.SnapRotation;
+import worst.woqued.api.utils.rotation.rotations.PolarRotation;
+
 import worst.woqued.api.utils.task.TaskPriority;
 import worst.woqued.client.features.modules.combat.elytratarget.ElytraTargetModule;
 @ModuleRegister(name = "Aura", category = Category.COMBAT)
@@ -47,7 +49,6 @@ public class AuraModule extends Module {
         return instance;
     }
 
-    private final AIPredictor predictor = new AIPredictor();
     private final TargetManager targetManager = new TargetManager();
     public CombatExecutor combatExecutor = new CombatExecutor();
 
@@ -56,10 +57,10 @@ public class AuraModule extends Module {
     }
 
     private final FunTimeRotation funTimeRotation = new FunTimeRotation();
-    private final PolarRotation polarRotation = new PolarRotation();
+    private final GrimRotation grimRotation = new GrimRotation();
     private final AresMineRotation aresMineRotation = new AresMineRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Grim", "Ft snap", "Really World", "Polar", "MetaHvH", "Ares Mine", "Fun Sky"
+            "Snap", "Ft snap", "Really World", "Grim", "MetaHvH", "Ares Mine", "Fun Sky", "Polar"
     );
 
     @Getter private final ModeSetting clickMode = new ModeSetting("Click mode").value("1.9").values("1.9", "1.8");
@@ -67,7 +68,6 @@ public class AuraModule extends Module {
 
     private final SliderSetting distance = new SliderSetting("Distance").value(3f).range(2.5f, 6f).step(0.1f);
     private final SliderSetting preDistance = new SliderSetting("Pre distance").value(0.3f).range(0f, 3f).step(0.1f);
-    private final SliderSetting snapSpeed = new SliderSetting("Snap Speed").value(0.75f).range(0.1f, 2f).step(0.05f).setVisible(() -> aimMode.is("Grim"));
     private final MultiBooleanSetting targets = new MultiBooleanSetting("Targets").value(
             new BooleanSetting("Players").value(true),
             new BooleanSetting("Mobs").value(true),
@@ -87,7 +87,7 @@ public class AuraModule extends Module {
     private long lastSecondTick = 0;
 
     public AuraModule() {
-        addSettings(aimMode, clickMode, cps, distance, preDistance, snapSpeed, targets, options, clientLook,
+        addSettings(aimMode, clickMode, cps, distance, preDistance, targets, options, clientLook,
                 elytraOverride, elytraDistance, elytraPreDistance, moveCorrection
         );
     }
@@ -100,17 +100,11 @@ public class AuraModule extends Module {
         return (mc.player.isGliding() && elytraOverride.getValue()) ? elytraDistance.getValue() : distance.getValue();
     }
 
-    public float getSnapSpeed() {
-        return snapSpeed.getValue();
-    }
-
     @Override
     public void onDisable() {
         targetManager.releaseTarget();
         target = null;
         previousTarget = null;
-        predictor.close();
-        // Плавное возвращение камеры при отключении
         RotationManager.getInstance().startReturning();
     }
     @Override
@@ -120,13 +114,10 @@ public class AuraModule extends Module {
     }
 
     public void loadModel() {
-        predictor.loadModel("Default");
     }
 
     @Override
     public void onEvent() {
-        predictor.onEvent();
-
         EventListener eventUpdate = UpdateEvent.getInstance().subscribe(new Listener<>(event -> {
             updateEventHandler();
         }));
@@ -138,7 +129,6 @@ public class AuraModule extends Module {
         EventListener attackEvent = AttackEvent.getInstance().subscribe(new Listener<>(event -> {
             AuraUtil.onAttack(aimMode.getValue());
         }));
-        addEvents(predictor.getEventListeners());
         addEvents(eventUpdate, rotationUpdateEvent, attackEvent);
     }
 
@@ -240,15 +230,17 @@ public class AuraModule extends Module {
     }
 
     private final MetaHvHRotation metaHvHRotation = new MetaHvHRotation();
+    private final PolarRotation polarRotation = new PolarRotation();
 
     private RotationMode getRotationMode() {
         return switch (aimMode.getValue()) {
             case "Ft snap" -> funTimeRotation;
-            case "Grim" -> new SnapRotation();
+            case "Snap" -> new SnapRotation();
             case "Really World" -> new MatrixRotation();
-            case "Polar", "Fun Sky" -> polarRotation;
+            case "Grim", "Fun Sky" -> grimRotation;
             case "MetaHvH" -> metaHvHRotation;
             case "Ares Mine" -> aresMineRotation;
+            case "Polar" -> polarRotation;
             default -> new SnapRotation();
         };
     }
@@ -257,7 +249,7 @@ public class AuraModule extends Module {
         if (usingElytraTarget()) {
             return ElytraTargetModule.getInstance().elytraRotationProcessor.getPredictedPos(target);
         }
-        return AuraUtil.getAimpoint(target, aimMode.getValue());
+        return target.getEyePos();
     }
 
     private boolean usingElytraTarget() {

@@ -30,15 +30,16 @@ public class WatermarkWidget extends Widget {
         float x = getDraggable().getX();
         float y = getDraggable().getY();
 
-        float h = scaled(14f);
+        float h = scaled(12f);
         float p = scaled(4.5f); // Отступы по краям (padding)
-        float fontSize = scaled(7f);
-        float gap = scaled(3f); // Расстояние между буквой B и Woqued
+        float fontSize = scaled(6f);
+        float gap = scaled(3f); // Расстояние между элементами
         float rectGap = scaled(3f); // Расстояние между двумя плашками
         float userGap = scaled(4f); // Отступ между названием клиента и именем пользователя
 
         Font font = getMediumFont();
-        Font logoFont = Fonts.LOGO; // Шрифт LOGO
+        Font woquedFont = Fonts.WOQUED; // Шрифт WOQUED для иконок
+        Font woquedlogoFont = Fonts.LOGO; // Шрифт WOQUED для иконок
 
         // Сбор информации
         animatedFps = MathHelper.lerp(0.1f, animatedFps, mc.getCurrentFps());
@@ -46,56 +47,99 @@ public class WatermarkWidget extends Widget {
         String ipText = (mc.getCurrentServerEntry() != null) ? mc.getCurrentServerEntry().address : "singleplayer";
         String pcName = System.getProperty("user.name");
 
-        String clientName = "Woqued";
-        String logoLetter = "B"; // Теперь B!
+        String clientName = "t.me/woqued";
+
+        // Иконки для каждого элемента (шрифт WOQUED)
+        String logoIcon = "B"; // Иконка для логотипа
+        String userIcon = "n"; // Иконка пользователя
+        String serverIcon = "o"; // Иконка сервера
+        String fpsIcon = "p"; // Иконка FPS
 
         // Вычисление ширины текста
-        float logoWidth = logoFont.getWidth(logoLetter, fontSize * 1.4f);
-        float nameWidth = font.getWidth(clientName, fontSize);
-        float userWidth = font.getWidth(pcName, fontSize);
-        float ipWidth = font.getWidth(ipText, fontSize);
-        float fpsWidth = font.getWidth(fpsText, fontSize);
+        float logoIconWidth = woquedFont.getWidth(logoIcon, fontSize * 1.2f);
+        float logoNameWidth = font.getWidth(clientName, fontSize);
+        float userIconWidth = woquedFont.getWidth(userIcon, fontSize);
+        float userNameWidth = font.getWidth(pcName, fontSize);
+        float serverIconWidth = woquedFont.getWidth(serverIcon, fontSize);
+        float serverIpWidth = font.getWidth(ipText, fontSize);
+        float fpsIconWidth = woquedFont.getWidth(fpsIcon, fontSize);
+        float fpsTextWidth = font.getWidth(fpsText, fontSize);
 
-        // Общая ширина одной плашки
-        float totalWidth = p + logoWidth + gap + nameWidth + gap + userWidth + gap + ipWidth + gap + fpsWidth + p;
+        float separatorWidth = scaled(1f); // Ширина разделителя
+
+        // Общая ширина плашки
+        float totalWidth = p + logoIconWidth + gap + logoNameWidth + gap +
+                separatorWidth + gap +
+                userIconWidth + gap + userNameWidth + gap +
+                separatorWidth + gap +
+                serverIconWidth + gap + serverIpWidth + gap +
+                separatorWidth + gap +
+                fpsIconWidth + gap + fpsTextWidth + p;
 
         float rectX = x;
 
         // Цвета
         Color bgColor = UIColors.widgetBlur();
         Color textColor = UIColors.textColor();
+        Color separatorColor = new Color(128, 128, 128, 100); // Серый полупрозрачный
         float round = h * 0.25f;
 
         // Отрисовка фона
-        RenderUtil.BLUR_RECT.draw(matrixStack, rectX, y, totalWidth, h, round, bgColor);
+        RenderUtil.BLUR_RECT.draw(matrixStack, rectX, y, totalWidth - 15, h, round, bgColor);
 
         // Центрирование по высоте
         float textY = y + (h / 2f) - (fontSize / 2f);
+        float iconY = y + (h / 2f) - ((fontSize * 1.2f) / 2f);
 
-        // Рисуем букву B (логотип) с градиентом
         float currentX = rectX + p;
-        float logoY = y + (h / 2f) - ((fontSize * 1.4f) / 2f);
 
-        logoFont.drawGradientText(matrixStack, logoLetter, currentX, logoY, fontSize * 1.4f,
-                UIColors.primary(), UIColors.secondary(), logoWidth / 4f);
+        // ===== ЛОГОТИП: иконка + Woqued =====
+        // Иконка логотипа (WOQUED шрифт)
+        woquedlogoFont.drawGradientText(matrixStack, logoIcon, currentX, iconY, fontSize * 1.1f,
+                UIColors.primary(), UIColors.secondary(), logoIconWidth / 4f);
+        currentX += logoIconWidth + gap;
 
-        // Затем Woqued
-        currentX += logoWidth + gap;
+        // Текст Woqued
         font.drawGradientText(matrixStack, clientName, currentX, textY, fontSize,
-                UIColors.primary(), UIColors.secondary(), nameWidth / 4f);
+                UIColors.primary(), UIColors.secondary(), logoNameWidth / 4f);
+        currentX += logoNameWidth + gap;
 
-        // Отрисовка информации (User -> IP -> FPS)
-        currentX += nameWidth + userGap;
+        // Разделитель 1
+//        RenderUtil.BLUR_RECT.draw(matrixStack, currentX, y + scaled(2f), separatorWidth, h - scaled(4f), scaled(1f), separatorColor);
+//        currentX += separatorWidth + gap;
+
+        // ===== ПОЛЬЗОВАТЕЛЬ =====
+        // Иконка пользователя
+        woquedFont.drawGradientText(matrixStack, userIcon, currentX + 1, iconY, fontSize * 1.1f, UIColors.primary(), UIColors.secondary(), logoIconWidth / 4f);
+        currentX += userIconWidth + gap;
 
         // Имя пользователя
         font.drawText(matrixStack, pcName, currentX, textY, fontSize, textColor);
-        currentX += userWidth + gap;
+        currentX += userNameWidth + gap;
+
+        // Разделитель 2
+//        RenderUtil.BLUR_RECT.draw(matrixStack, currentX, y + scaled(2f), separatorWidth, h - scaled(4f), scaled(1f), separatorColor);
+//        currentX += separatorWidth + gap;
+
+        // ===== СЕРВЕР =====
+        // Иконка сервера
+        woquedFont.drawGradientText(matrixStack, serverIcon, currentX, iconY, fontSize * 1.1f, UIColors.primary(), UIColors.secondary(), logoIconWidth / 4f);
+        currentX += serverIconWidth + gap;
 
         // IP сервера
         font.drawText(matrixStack, ipText, currentX, textY, fontSize, textColor);
-        currentX += ipWidth + gap;
+        currentX += serverIpWidth + gap;
 
-        // FPS
+        // Разделитель 3
+//        RenderUtil.BLUR_RECT.draw(matrixStack, currentX, y + scaled(2f), separatorWidth, h - scaled(4f), scaled(1f), separatorColor);
+//        currentX += separatorWidth + gap;
+
+        // ===== FPS =====
+        // Иконка FPS
+        woquedFont.drawGradientText(matrixStack, fpsIcon, currentX, iconY, fontSize * 1.2f,  UIColors.primary(), UIColors.secondary(), logoIconWidth / 4f);
+        currentX += fpsIconWidth + gap;
+
+        // Текст FPS
         font.drawText(matrixStack, fpsText, currentX, textY, fontSize, textColor);
 
         // Обновление зоны перетаскивания

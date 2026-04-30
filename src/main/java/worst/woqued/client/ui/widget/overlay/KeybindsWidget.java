@@ -7,6 +7,7 @@ import worst.woqued.api.module.ModuleManager;
 import worst.woqued.api.system.backend.KeyStorage;
 import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.render.RenderUtil;
+import worst.woqued.api.utils.render.fonts.Fonts;
 import worst.woqued.client.ui.widget.ContainerWidget;
 
 import java.awt.Color;
@@ -47,15 +48,22 @@ public class KeybindsWidget extends ContainerWidget {
         boolean isRightSide = x + (width / 2f) > MinecraftClient.getInstance().getWindow().getScaledWidth() / 2f;
 
         // Параметры для единства стиля
-        float h = scaled(14f);
+        float h = scaled(12f);
         float p = scaled(4.5f);
-        float fontSize = scaled(7f);
+        float fontSize = scaled(6f);
         float round = h * 0.25f;
+        float iconPadding = scaled(5f);
 
         String title = "Keybinds";
+        String icon = "t";
 
         // Расчет максимальной ширины
-        float maxW = getMediumFont().getWidth(title, fontSize) + p * 6f;
+        float titleWidth = getMediumFont().getWidth(title, fontSize);
+        float iconWidth = Fonts.WOQUED.getWidth(icon, fontSize);
+        float totalTitleContentWidth = titleWidth + iconPadding + iconWidth;
+
+        float maxW = totalTitleContentWidth + p * 2f;
+
         for (Map.Entry<Module, Float> e : animMap.entrySet()) {
             if (e.getValue() <= 0.05f) continue;
 
@@ -73,12 +81,13 @@ public class KeybindsWidget extends ContainerWidget {
         // --- РЕНДЕР ЗАГОЛОВКА ---
         RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, h, round, UIColors.widgetBlur());
 
-        // Вычисление центра для текста
-        float titleWidth = getMediumFont().getWidth(title, fontSize);
-        float titleX = renderX + (maxW / 2f) - (titleWidth / 2f);
+        float centerY = currentY + h / 2f - fontSize / 2f;
+        float currentX = renderX + p;
 
-        // Заголовок градиентом по центру
-        getMediumFont().drawGradientText(ms, title, titleX, currentY + h / 2f - fontSize / 2f,
+        getMediumFont().drawText(ms, title, currentX, centerY, fontSize, UIColors.textColor());
+
+        float iconX = renderX + maxW - p - iconWidth;
+        Fonts.WOQUED.drawGradientText(ms, icon, iconX, centerY,
                 fontSize, UIColors.primary(), UIColors.secondary(), maxW / 4f);
 
         currentY += h + 2.5f;
@@ -93,32 +102,44 @@ public class KeybindsWidget extends ContainerWidget {
             float rowH = h * anim;
             int alpha = (int) (255 * anim);
 
-            Color themeBlur = UIColors.widgetBlur();
-            Color dynamicBg = new Color(themeBlur.getRed(), themeBlur.getGreen(), themeBlur.getBlue(), (int)(themeBlur.getAlpha() * anim));
-
             Color themeText = UIColors.textColor();
             Color dynamicText = new Color(themeText.getRed(), themeText.getGreen(), themeText.getBlue(), alpha);
 
-            Color keyRectColor = new Color(255, 255, 255, (int)(30 * anim));
-
-            // Фон строки
-            RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, rowH, round, dynamicBg);
+            Color moduleRectColor = UIColors.widgetBlur();
+            Color keyRectColor = UIColors.widgetBlur();
 
             float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
-            // Название модуля
-            getMediumFont().drawText(ms, m.getName(), renderX + p + 2f, textCenterY, fontSize, dynamicText);
+            // ===== НАЗВАНИЕ МОДУЛЯ =====
+            String moduleName = m.getName();
+            float moduleTextW = getMediumFont().getWidth(moduleName, fontSize);
 
-            // Клавиша
+            float moduleRectW = moduleTextW + scaled(9);
+            float moduleRectH = (fontSize + scaled(6f)) * anim;
+            float moduleRectX = renderX + p + 0.5f - scaled(4.5f);
+            float moduleRectY = currentY + (rowH / 2f) - (moduleRectH / 2f);
+
+            if (anim > 0.05f) {
+                RenderUtil.RECT.draw(ms, moduleRectX, moduleRectY, moduleRectW, moduleRectH, 2.5f, moduleRectColor);
+
+                getMediumFont().drawText(ms, moduleName,
+                        moduleRectX + (moduleRectW / 2f) - (moduleTextW / 2f),
+                        textCenterY, fontSize, dynamicText);
+            }
+
+            // ===== КЛАВИША - ТЕПЕРЬ СРАЗУ ПОСЛЕ НАЗВАНИЯ С ОТСТУПОМ =====
             String keyName = KeyStorage.getBind(m.getBind());
             float keyTextW = getMediumFont().getWidth(keyName, fontSize);
 
             float keyRectW = keyTextW + scaled(9);
-            float keyRectH = (fontSize + scaled(2.5f)) * anim;
-            float keyRectX = renderX + maxW - p - keyRectW;
+            float keyRectH = (fontSize + scaled(6f)) * anim;
+            // ===== ВОТ ТУТ ГЛАВНОЕ ИЗМЕНЕНИЕ =====
+            // Клавиша ставится после ректа модуля + маленький отступ
+            float gapAfterModule = scaled(2f); // Отступ после названия (меняй это число)
+            float keyRectX = moduleRectX + moduleRectW + gapAfterModule;
             float keyRectY = currentY + (rowH / 2f) - (keyRectH / 2f);
 
-            if (anim > 0.5f) {
+            if (anim > 0.05f) {
                 RenderUtil.RECT.draw(ms, keyRectX, keyRectY, keyRectW, keyRectH, 2.5f, keyRectColor);
 
                 getMediumFont().drawText(ms, keyName,

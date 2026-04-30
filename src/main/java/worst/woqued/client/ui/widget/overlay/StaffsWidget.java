@@ -13,7 +13,8 @@ import worst.woqued.api.utils.framelimiter.FrameLimiter;
 import worst.woqued.api.utils.other.ReplaceUtil;
 import worst.woqued.api.utils.player.PlayerUtil;
 import worst.woqued.api.utils.render.RenderUtil;
-import worst.woqued.client.ui.widget.ContainerWidget; // Вот этот важный импорт
+import worst.woqued.api.utils.render.fonts.Fonts;
+import worst.woqued.client.ui.widget.ContainerWidget;
 
 import java.awt.*;
 import java.util.*;
@@ -22,8 +23,6 @@ import java.util.List;
 public class StaffsWidget extends ContainerWidget {
     private final FrameLimiter frameLimiter = new FrameLimiter(false);
     private List<Staff> cacheStaffs = new ArrayList<>();
-
-    // Карта анимаций для плавного появления/скрытия строк
     private final Map<String, Float> animMap = new HashMap<>();
 
     public record Staff(String name, Status status) {}
@@ -45,19 +44,18 @@ public class StaffsWidget extends ContainerWidget {
 
     @Override
     public String getName() {
-        return "Staffs";
+        return "Staff Online";
     }
 
     @Override
     protected Map<String, ContainerElement.ColoredString> getCurrentData() {
-        return null; // Не используется, так как переопределен render
+        return null;
     }
 
     @Override
     public void render(MatrixStack ms) {
         if (mc.player == null) return;
 
-        // 1. Получаем текущий список персонала
         List<Staff> currentStaffs = getStaffList();
         Set<String> activeNames = new HashSet<>();
         Map<String, Staff> staffData = new HashMap<>();
@@ -67,7 +65,6 @@ public class StaffsWidget extends ContainerWidget {
             staffData.put(s.name(), s);
         }
 
-        // 2. Обновление анимаций (как в CooldownsWidget)
         activeNames.forEach(name -> {
             float currentAnim = animMap.getOrDefault(name, 0f);
             animMap.put(name, currentAnim + (1f - currentAnim) * 0.15f);
@@ -82,49 +79,56 @@ public class StaffsWidget extends ContainerWidget {
 
         animMap.entrySet().removeIf(e -> e.getValue() < 0.01f && !activeNames.contains(e.getKey()));
 
-        // 3. Геометрия
         float x = getDraggable().getX();
         float y = getDraggable().getY();
         float width = getDraggable().getWidth();
         boolean isRightSide = x + (width / 2f) > MinecraftClient.getInstance().getWindow().getScaledWidth() / 2f;
 
-        float h = scaled(14f);
+        float h = scaled(12f);
         float p = scaled(4.5f);
-        float fontSize = scaled(7f);
+        float fontSize = scaled(6f);
         float round = h * 0.25f;
+        float iconPadding = scaled(5f);
 
         String title = getName();
+        String icon = "s"; // Иконка для стаффа
 
-        // 4. Расчет максимальной ширины
-        float maxW = getMediumFont().getWidth(title, fontSize) + p * 6f;
+        // Расчет максимальной ширины
+        float titleWidth = getMediumFont().getWidth(title, fontSize);
+        float iconWidth = Fonts.WOQUED.getWidth(icon, fontSize);
+        float totalTitleContentWidth = titleWidth + iconPadding + iconWidth;
+
+        float maxW = totalTitleContentWidth + p * 2f;
+
         for (String name : animMap.keySet()) {
             if (animMap.get(name) < 0.05f) continue;
-
             Staff staff = staffData.get(name);
-            String label = (staff != null) ? staff.status().getLabel() : "";
+            if (staff == null) continue;
 
-            // Имя + отступ + ширина плашки статуса
-            float nameW = getMediumFont().getWidth(name, fontSize);
-            float labelW = getMediumFont().getWidth(label, fontSize) + scaled(9);
-            float totalRowW = nameW + labelW + p * 8f;
-
+            float nameW = getMediumFont().getWidth(staff.name(), fontSize);
+            float labelW = getMediumFont().getWidth(staff.status().getLabel(), fontSize);
+            float totalRowW = nameW + labelW + p * 4f;
             if (totalRowW > maxW) maxW = totalRowW;
         }
 
         float renderX = isRightSide ? (x + width - maxW) : x;
         float currentY = y;
 
-        // 5. Рендер заголовка
+        // Рендер заголовка
         RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, h, round, UIColors.widgetBlur());
-        float titleWidth = getMediumFont().getWidth(title, fontSize);
-        getMediumFont().drawGradientText(ms, title,
-                renderX + (maxW / 2f) - (titleWidth / 2f),
-                currentY + h / 2f - fontSize / 2f,
+
+        float centerY = currentY + h / 2f - fontSize / 2f;
+        float currentX = renderX + p;
+
+        getMediumFont().drawText(ms, title, currentX, centerY, fontSize, UIColors.textColor());
+
+        float iconX = renderX + maxW - p - iconWidth;
+        Fonts.WOQUED.drawGradientText(ms, icon, iconX, centerY,
                 fontSize, UIColors.primary(), UIColors.secondary(), maxW / 4f);
 
         currentY += h + 2.5f;
 
-        // 6. Рендер списка (анимированно)
+        // Рендер списка
         for (String name : animMap.keySet()) {
             float anim = animMap.get(name);
             if (anim <= 0.01f) continue;
@@ -135,40 +139,46 @@ public class StaffsWidget extends ContainerWidget {
             float rowH = h * anim;
             int alpha = (int) (255 * anim);
 
-            // Фон строки
-            Color themeBlur = UIColors.widgetBlur();
-            Color dynamicBg = new Color(themeBlur.getRed(), themeBlur.getGreen(), themeBlur.getBlue(), (int)(themeBlur.getAlpha() * anim));
-            RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, rowH, round, dynamicBg);
+            float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
             if (anim > 0.05f) {
                 Color textColor = UIColors.textColor();
                 Color dynamicText = new Color(textColor.getRed(), textColor.getGreen(), textColor.getBlue(), alpha);
-                float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
-                // Имя сотрудника
-                getMediumFont().drawText(ms, staff.name(), renderX + p + 2f, textCenterY, fontSize, dynamicText);
-
-                // Цвет статуса (как в оригинале)
+                // Цвет для статуса
                 Color statusColor = switch (staff.status()) {
                     case ONLINE -> UIColors.positiveColor();
                     case NEAR -> UIColors.middleColor();
                     case GM3, VANISH -> UIColors.negativeColor();
                 };
-
-                // Плашка статуса (как бокс со временем в кулдаунах)
-                String statusLabel = staff.status().getLabel();
-                float statTextW = getMediumFont().getWidth(statusLabel, fontSize);
-                float boxW = statTextW + scaled(9);
-                float boxH = (fontSize + scaled(2.5f)) * anim;
-                float boxX = renderX + maxW - p - boxW;
-                float boxY = currentY + (rowH / 2f) - (boxH / 2f);
-
-                // Фон плашки статуса (полупрозрачный цвет статуса)
-                Color statusBoxColor = new Color(statusColor.getRed(), statusColor.getGreen(), statusColor.getBlue(), (int)(40 * anim));
                 Color statusTextColor = new Color(statusColor.getRed(), statusColor.getGreen(), statusColor.getBlue(), alpha);
+                Color statusBoxColor = new Color(statusColor.getRed(), statusColor.getGreen(), statusColor.getBlue(), (int)(255 * anim));
 
-                RenderUtil.RECT.draw(ms, boxX, boxY, boxW, boxH, 2.5f, statusBoxColor);
-                getMediumFont().drawText(ms, statusLabel, boxX + (boxW / 2f) - (statTextW / 2f), textCenterY, fontSize, statusTextColor);
+                // Рект для имени
+                float nameTextW = getMediumFont().getWidth(staff.name(), fontSize);
+                float nameRectW = nameTextW + scaled(9);
+                float nameRectH = (fontSize + scaled(6f)) * anim;
+                float nameRectX = renderX;
+                float nameRectY = currentY + (rowH / 2f) - (nameRectH / 2f);
+
+                RenderUtil.RECT.draw(ms, nameRectX, nameRectY, nameRectW, nameRectH, 2.5f, UIColors.widgetBlur());
+                getMediumFont().drawText(ms, staff.name(),
+                        nameRectX + (nameRectW / 2f) - (nameTextW / 2f),
+                        textCenterY, fontSize, dynamicText);
+
+                // Рект для статуса
+                String statusLabel = staff.status().getLabel();
+                float statusTextW = getMediumFont().getWidth(statusLabel, fontSize);
+                float statusRectW = statusTextW + scaled(9);
+                float statusRectH = (fontSize + scaled(6f)) * anim;
+                float gapAfterName = scaled(2f);
+                float statusRectX = nameRectX + nameRectW + gapAfterName;
+                float statusRectY = currentY + (rowH / 2f) - (statusRectH / 2f);
+
+                RenderUtil.RECT.draw(ms, statusRectX, statusRectY, statusRectW, statusRectH, 2.5f, statusBoxColor);
+                getMediumFont().drawText(ms, statusLabel,
+                        statusRectX + (statusRectW / 2f) - (statusTextW / 2f),
+                        textCenterY, fontSize, statusTextColor);
             }
 
             currentY += rowH + 1.5f;
