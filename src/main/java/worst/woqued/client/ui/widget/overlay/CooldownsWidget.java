@@ -78,7 +78,7 @@ public class CooldownsWidget extends ContainerWidget {
         float iconPadding = scaled(5f);
 
         String title = "Cooldowns";
-        String icon = "c"; // Иконка для кулдаунов
+        String icon = "v"; // Иконка для кулдаунов
 
         // Расчет максимальной ширины
         float titleWidth = getMediumFont().getWidth(title, fontSize);

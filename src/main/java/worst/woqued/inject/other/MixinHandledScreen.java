@@ -23,6 +23,7 @@ import worst.woqued.api.system.backend.KeyStorage;
 import worst.woqued.api.system.backend.SharedClass;
 import worst.woqued.api.utils.math.TimerUtil;
 import worst.woqued.client.features.modules.other.AuctionHelperModule;
+import worst.woqued.client.features.modules.other.ItemScrollerModule;
 import worst.woqued.client.features.modules.other.MouseTweaksModule;
 
 @Mixin(HandledScreen.class)
@@ -60,6 +61,12 @@ public abstract class MixinHandledScreen<T extends ScreenHandler> extends Screen
                     onMouseClick(slot, slot.id, 0, SlotActionType.QUICK_MOVE);
                     timerUtil.reset();
                 }
+
+                ItemScrollerModule itemScroller = ItemScrollerModule.getInstance();
+                if (itemScroller.isEnabled() && shiftIsPressed() && mouseIsHolding() && itemScroller.timerFinished()) {
+                    onMouseClick(slot, slot.id, 0, SlotActionType.QUICK_MOVE);
+                    itemScroller.resetTimer();
+                }
             }
         }
     }
@@ -78,5 +85,12 @@ public abstract class MixinHandledScreen<T extends ScreenHandler> extends Screen
     @Unique
     private boolean mouseIsHolding() {
         return KeyStorage.isPressed(-100 + GLFW.GLFW_MOUSE_BUTTON_1);
+    }
+
+    @Unique
+    private boolean shiftIsPressed() {
+        long windowHandle = MinecraftClient.getInstance().getWindow().getHandle();
+        return GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_LEFT_SHIFT) == 1
+                || GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_RIGHT_SHIFT) == 1;
     }
 }
