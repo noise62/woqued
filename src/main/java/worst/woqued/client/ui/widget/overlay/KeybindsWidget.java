@@ -5,6 +5,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import worst.woqued.api.module.Module;
 import worst.woqued.api.module.ModuleManager;
 import worst.woqued.api.system.backend.KeyStorage;
+import worst.woqued.api.system.configs.BindManager;
 import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.utils.render.fonts.Fonts;
@@ -32,9 +33,11 @@ public class KeybindsWidget extends ContainerWidget {
 
     @Override
     public void render(MatrixStack ms) {
-        // Логика анимаций
         ModuleManager.getInstance().getModules().forEach(m -> {
-            boolean active = m.isEnabled() && m.hasBind();
+            int bind = BindManager.getInstance().has(m.getName())
+                    ? BindManager.getInstance().getBind(m.getName())
+                    : m.getBind();
+            boolean active = m.isEnabled() && (m.hasBind() || BindManager.getInstance().has(m.getName()));
             float currentAnim = animMap.getOrDefault(m, 0f);
             animMap.put(m, currentAnim + ((active ? 1f : 0f) - currentAnim) * 0.15f);
         });
@@ -47,7 +50,6 @@ public class KeybindsWidget extends ContainerWidget {
 
         boolean isRightSide = x + (width / 2f) > MinecraftClient.getInstance().getWindow().getScaledWidth() / 2f;
 
-        // Параметры для единства стиля
         float h = scaled(12f);
         float p = scaled(4.5f);
         float fontSize = scaled(6f);
@@ -57,7 +59,6 @@ public class KeybindsWidget extends ContainerWidget {
         String title = "Keybinds";
         String icon = "t";
 
-        // Расчет максимальной ширины
         float titleWidth = getMediumFont().getWidth(title, fontSize);
         float iconWidth = Fonts.WOQUED.getWidth(icon, fontSize);
         float totalTitleContentWidth = titleWidth + iconPadding + iconWidth;
@@ -67,8 +68,12 @@ public class KeybindsWidget extends ContainerWidget {
         for (Map.Entry<Module, Float> e : animMap.entrySet()) {
             if (e.getValue() <= 0.05f) continue;
 
-            String keyName = KeyStorage.getBind(e.getKey().getBind());
-            float moduleNameW = getMediumFont().getWidth(e.getKey().getName(), fontSize);
+            Module m = e.getKey();
+            int bind = BindManager.getInstance().has(m.getName())
+                    ? BindManager.getInstance().getBind(m.getName())
+                    : m.getBind();
+            String keyName = KeyStorage.getBind(bind);
+            float moduleNameW = getMediumFont().getWidth(m.getName(), fontSize);
             float keyNameW = getMediumFont().getWidth(keyName, fontSize);
 
             float totalRowW = moduleNameW + keyNameW + p * 8f;
@@ -78,7 +83,6 @@ public class KeybindsWidget extends ContainerWidget {
         float renderX = isRightSide ? (x + width - maxW) : x;
         float currentY = y;
 
-        // --- РЕНДЕР ЗАГОЛОВКА ---
         RenderUtil.BLUR_RECT.draw(ms, renderX, currentY, maxW, h, round, UIColors.widgetBlur());
 
         float centerY = currentY + h / 2f - fontSize / 2f;
@@ -92,12 +96,15 @@ public class KeybindsWidget extends ContainerWidget {
 
         currentY += h + 2.5f;
 
-        // Рендер списка биндов
         for (Module m : ModuleManager.getInstance().getModules()) {
             if (!animMap.containsKey(m)) continue;
 
             float anim = animMap.get(m);
             if (anim <= 0.05f) continue;
+
+            int bind = BindManager.getInstance().has(m.getName())
+                    ? BindManager.getInstance().getBind(m.getName())
+                    : m.getBind();
 
             float rowH = h * anim;
             int alpha = (int) (255 * anim);
@@ -110,7 +117,6 @@ public class KeybindsWidget extends ContainerWidget {
 
             float textCenterY = currentY + (rowH / 2f) - (fontSize / 2f);
 
-            // ===== НАЗВАНИЕ МОДУЛЯ =====
             String moduleName = m.getName();
             float moduleTextW = getMediumFont().getWidth(moduleName, fontSize);
 
@@ -127,15 +133,12 @@ public class KeybindsWidget extends ContainerWidget {
                         textCenterY, fontSize, dynamicText);
             }
 
-            // ===== КЛАВИША - ТЕПЕРЬ СРАЗУ ПОСЛЕ НАЗВАНИЯ С ОТСТУПОМ =====
-            String keyName = KeyStorage.getBind(m.getBind());
+            String keyName = KeyStorage.getBind(bind);
             float keyTextW = getMediumFont().getWidth(keyName, fontSize);
 
             float keyRectW = keyTextW + scaled(9);
             float keyRectH = (fontSize + scaled(6f)) * anim;
-            // ===== ВОТ ТУТ ГЛАВНОЕ ИЗМЕНЕНИЕ =====
-            // Клавиша ставится после ректа модуля + маленький отступ
-            float gapAfterModule = scaled(2f); // Отступ после названия (меняй это число)
+            float gapAfterModule = scaled(2f);
             float keyRectX = moduleRectX + moduleRectW + gapAfterModule;
             float keyRectY = currentY + (rowH / 2f) - (keyRectH / 2f);
 

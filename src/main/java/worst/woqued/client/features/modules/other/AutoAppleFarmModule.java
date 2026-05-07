@@ -35,7 +35,7 @@ public class AutoAppleFarmModule extends Module {
     private State currentState = State.WAITING;
     private BlockPos treePos = null;
     private ScheduledExecutorService executor;
-    private boolean running = false;
+    private volatile boolean running = false;
     private boolean isBreaking = false;
     private BlockPos currentBreakingPos = null;
 
@@ -54,6 +54,11 @@ public class AutoAppleFarmModule extends Module {
     public void onEnable() {
         if (running) return;
 
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
+
         currentState = State.PLACING_SAPLING;
         treePos = null;
         running = true;
@@ -61,13 +66,18 @@ public class AutoAppleFarmModule extends Module {
         currentBreakingPos = null;
 
         executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(this::tick, 0, 50, TimeUnit.MILLISECONDS);
-
+        executor.scheduleAtFixedRate(this::tick, 0, 1, TimeUnit.MILLISECONDS);
     }
 
     private void tick() {
         if (mc == null || mc.player == null || mc.world == null) return;
-        if (!running) return;
+        if (!running) {
+            if (isBreaking) {
+                mc.options.attackKey.setPressed(false);
+                isBreaking = false;
+            }
+            return;
+        }
 
         if (!checkInventory()) return;
 
@@ -75,20 +85,11 @@ public class AutoAppleFarmModule extends Module {
             autoSelectTool();
 
             switch (currentState) {
-                case PLACING_SAPLING:
-                    placeSapling();
-                    break;
-                case GROWING_TREE:
-                    growTree();
-                    break;
-                case BREAKING_LEAVES:
-                    breakLeaves();
-                    break;
-                case BREAKING_LOG:
-                    breakLog();
-                    break;
-                case WAITING:
-                    break;
+                case PLACING_SAPLING -> placeSapling();
+                case GROWING_TREE -> growTree();
+                case BREAKING_LEAVES -> breakLeaves();
+                case BREAKING_LOG -> breakLog();
+                case WAITING -> {}
             }
         });
     }
@@ -364,7 +365,6 @@ public class AutoAppleFarmModule extends Module {
         double distance = Math.sqrt(dx * dx + dz * dz);
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
         float pitch = (float) Math.toDegrees(Math.atan2(-dy, distance));
-
         pitch = Math.max(-90, Math.min(90, pitch));
 
         mc.player.setYaw(yaw);
@@ -377,11 +377,14 @@ public class AutoAppleFarmModule extends Module {
             mc.options.attackKey.setPressed(false);
             isBreaking = false;
         }
+        currentBreakingPos = null;
+
+        running = false;
+        currentState = State.WAITING;
 
         if (executor != null) {
             executor.shutdownNow();
             executor = null;
         }
-        running = false;
     }
 }

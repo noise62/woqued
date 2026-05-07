@@ -5,6 +5,7 @@ import net.fabricmc.api.ClientModInitializer;
 import worst.woqued.api.command.CommandManager;
 import worst.woqued.api.module.ModuleManager;
 import worst.woqued.api.system.backend.ClientInfo;
+import worst.woqued.api.system.configs.BindManager;
 import worst.woqued.api.system.configs.ConfigManager;
 import worst.woqued.api.system.configs.ConfigSkin;
 import worst.woqued.api.system.configs.FriendManager;
@@ -48,6 +49,7 @@ public class EvaWare implements ClientModInitializer {
         DraggableManager.getInstance().load();
         FriendManager.getInstance().load();
         MacroManager.getInstance().load();
+        BindManager.getInstance().load();
     }
 
     private void loadManagers() {
@@ -72,5 +74,6 @@ public class EvaWare implements ClientModInitializer {
         ThemeEditor.getInstance().save(true);
         DraggableManager.getInstance().save();
         MacroManager.getInstance().save();
+        BindManager.getInstance().save();
     }
 }

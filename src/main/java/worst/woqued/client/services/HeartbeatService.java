@@ -9,6 +9,7 @@ import worst.woqued.api.event.events.client.TickEvent;
 import worst.woqued.api.event.events.render.Render2DEvent;
 import worst.woqued.api.module.ModuleManager;
 import worst.woqued.api.system.client.GpsManager;
+import worst.woqued.api.system.configs.BindManager;
 import worst.woqued.api.system.configs.ConfigSkin;
 import worst.woqued.api.system.configs.MacroManager;
 import worst.woqued.api.system.draggable.DraggableManager;
@@ -58,16 +59,22 @@ public class HeartbeatService implements QuickImports {
         KeyEvent.getInstance().subscribe(new Listener<>(event -> {
             if (event.action() != 1 || event.key() == -999 || event.key() == -1) return;
 
-            int action = event.action();
             int key = event.key() + (event.mouse() ? -100 : 0);
 
             if (mc.currentScreen == null) {
-                ModuleManager.getInstance().getModules().forEach(module -> {
-                    int bind = module.getBind();
-                    if (bind == key && module.hasBind()) {
-                        module.toggle();
-                    }
-                });
+                boolean handled = BindManager.getInstance().getBinds().stream()
+                        .anyMatch(b -> b.getKey() == key);
+
+                if (handled) {
+                    BindManager.getInstance().onKeyPressed(key);
+                } else {
+                    ModuleManager.getInstance().getModules().forEach(module -> {
+                        int bind = module.getBind();
+                        if (bind == key && module.hasBind()) {
+                            module.toggle();
+                        }
+                    });
+                }
 
                 MacroManager.getInstance().onKeyPressed(key);
             }

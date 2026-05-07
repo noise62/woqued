@@ -38,6 +38,8 @@ import worst.woqued.api.utils.rotation.rotations.MetaHvHRotation;
 import worst.woqued.api.utils.rotation.rotations.GrimRotation;
 import worst.woqued.api.utils.rotation.rotations.SnapRotation;
 import worst.woqued.api.utils.rotation.rotations.PolarRotation;
+import worst.woqued.api.utils.rotation.rotations.IntaveRotation;
+import worst.woqued.client.features.modules.combat.NeuroRotationManager;
 
 import worst.woqued.api.utils.task.TaskPriority;
 import worst.woqued.client.features.modules.combat.elytratarget.ElytraTargetModule;
@@ -51,6 +53,7 @@ public class AuraModule extends Module {
 
     private final TargetManager targetManager = new TargetManager();
     public CombatExecutor combatExecutor = new CombatExecutor();
+    private final NeuroRotationManager neuroRotationManager = NeuroRotationManager.getInstance();
 
     public CombatExecutor getCombatExecutor() {
         return combatExecutor;
@@ -59,9 +62,21 @@ public class AuraModule extends Module {
     private final FunTimeRotation funTimeRotation = new FunTimeRotation();
     private final GrimRotation grimRotation = new GrimRotation();
     private final AresMineRotation aresMineRotation = new AresMineRotation();
+    private final IntaveRotation intaveRotation = new IntaveRotation();
+    private final NeuroRotation neuroRotation = new NeuroRotation();
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Snap", "Ft snap", "Really World", "Grim", "MetaHvH", "Ares Mine", "Fun Sky", "Polar"
+            "Snap", "Ft snap", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar", "Neuro"
     );
+
+    public boolean isFree() {
+        return moveCorrection.is("Free");
+    }
+
+    public static boolean isTargeting() {
+        RotationManager rotationManager = RotationManager.getInstance();
+        RotationPlan plan = rotationManager.getCurrentRotationPlan();
+        return plan != null && plan.provider() instanceof AuraModule && ((AuraModule) plan.provider()).isEnabled();
+    }
 
     @Getter private final ModeSetting clickMode = new ModeSetting("Click mode").value("1.9").values("1.9", "1.8");
     @Getter private final SliderSetting cps = new SliderSetting("CPS").value(9f).range(1f, 20f).step(0.5f).setVisible(() -> clickMode.is("1.8"));
@@ -80,7 +95,7 @@ public class AuraModule extends Module {
     private final SliderSetting elytraDistance = new SliderSetting("Elytra distance").value(4f).range(2.5f, 6f).step(0.1f).setVisible(elytraOverride::getValue);
     private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
     
-    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "No Correction");
+    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "Free", "No Correction");
 
     public LivingEntity target;
     private LivingEntity previousTarget = null;
@@ -114,6 +129,13 @@ public class AuraModule extends Module {
     }
 
     public void loadModel() {
+        if (neuroRotationManager.getCurrentModelName() != null) {
+            neuroRotationManager.loadModel(neuroRotationManager.getCurrentModelName());
+        }
+    }
+
+    public boolean isNeuroRotationActive() {
+        return neuroRotationManager.isPlaying();
     }
 
     @Override
@@ -129,7 +151,12 @@ public class AuraModule extends Module {
         EventListener attackEvent = AttackEvent.getInstance().subscribe(new Listener<>(event -> {
             AuraUtil.onAttack(aimMode.getValue());
         }));
-        addEvents(eventUpdate, rotationUpdateEvent, attackEvent);
+        
+        EventListener movementCorrectionEvent = RotationUpdateEvent.getInstance().subscribe(new Listener<>(event -> {
+            applyMovementCorrection();
+        }));
+        
+        addEvents(eventUpdate, rotationUpdateEvent, attackEvent, movementCorrectionEvent);
     }
 
     private void postRotMoveEventHandler() {
@@ -151,6 +178,10 @@ public class AuraModule extends Module {
         if (RotationUtil.getSpot(target).distanceTo(mc.player.getEyePos()) > getAttackDistance() + getPreDistance()) {
             targetManager.releaseTarget();
             return;
+        }
+
+        if (neuroRotationManager.isRecording()) {
+            neuroRotationManager.recordRotation(target);
         }
 
         if (target != null) {
@@ -214,6 +245,11 @@ public class AuraModule extends Module {
 
     private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {
         if (combatExecutor.combatManager().configurable() == null) return;
+        
+        if (neuroRotationManager.isRecording()) {
+            return;
+        }
+
         RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus"), moveCorrection.is("Free")).clientLook(clientLook.getValue());
 
         boolean noHitRule = (!combatExecutor.combatManager().canAttack());
@@ -238,9 +274,11 @@ public class AuraModule extends Module {
             case "Snap" -> new SnapRotation();
             case "Really World" -> new MatrixRotation();
             case "Grim", "Fun Sky" -> grimRotation;
+            case "Intave" -> intaveRotation;
             case "MetaHvH" -> metaHvHRotation;
             case "Ares Mine" -> aresMineRotation;
             case "Polar" -> polarRotation;
+            case "Neuro" -> neuroRotation;
             default -> new SnapRotation();
         };
     }
@@ -323,6 +361,71 @@ public class AuraModule extends Module {
             return transformDirectionForTargeting(input);
         }
 
+        if (moveCorrection.is("Free")) {
+            net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
+            if (player == null) return input;
+
+            float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
+            float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
+
+            float yaw = rotation.getYaw();
+            float direction = player.getYaw();
+
+            float deltaYaw = direction - yaw;
+            float radians = deltaYaw * 0.017453292f;
+
+            float newX = x * MathHelper.cos(radians) - z * MathHelper.sin(radians);
+            float newZ = z * MathHelper.cos(radians) + x * MathHelper.sin(radians);
+
+            int movementSideways = Math.round(newX);
+            int movementForward = Math.round(newZ);
+
+            return new DirectionalInput(movementForward, movementSideways);
+        }
+
         return input;
+    }
+    
+    public void applyMovementCorrection() {
+        if (!moveCorrection.is("Free")) return;
+        
+        if (TriggerBotModule.getInstance().isEnabled()) return;
+        
+        RotationManager rotationManager = RotationManager.getInstance();
+        Rotation rotation = rotationManager.getCurrentRotation();
+        RotationPlan rotationPlan = rotationManager.getCurrentRotationPlan();
+        
+        if (rotation == null || rotationPlan == null) return;
+        if (!rotationPlan.moveCorrection()) return;
+        
+        net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
+        if (player == null) return;
+        
+        // Получаем текущий movement input только если игрок двигается
+        float z = KeyboardInput.getMovementMultiplier(mc.options.forwardKey.isPressed(), mc.options.backKey.isPressed());
+        float x = KeyboardInput.getMovementMultiplier(mc.options.leftKey.isPressed(), mc.options.rightKey.isPressed());
+        
+        // Если игрок не двигается, не применяем коррекцию
+        if (z == 0 && x == 0) return;
+        
+        float yaw = rotation.getYaw();
+        float direction = player.getYaw();
+        
+        // Делаем коррекцию более плавной и естественной
+        float deltaYaw = MathHelper.wrapDegrees(direction - yaw);
+        
+        // Ограничиваем угол коррекции, чтобы не было резких поворотов
+        if (Math.abs(deltaYaw) > 60) return;
+        
+        float radians = deltaYaw * 0.017453292f;
+        
+        float newX = x * MathHelper.cos(radians) - z * MathHelper.sin(radians);
+        float newZ = z * MathHelper.cos(radians) + x * MathHelper.sin(radians);
+        
+        // Применяем коррекцию только если она значительна
+        if (Math.abs(newX - x) > 0.1f || Math.abs(newZ - z) > 0.1f) {
+            mc.player.input.movementForward = (Math.abs(newZ) > 0.5f) ? (newZ > 0 ? 1 : -1) : 0;
+            mc.player.input.movementSideways = (Math.abs(newX) > 0.5f) ? (newX > 0 ? 1 : -1) : 0;
+        }
     }
 }

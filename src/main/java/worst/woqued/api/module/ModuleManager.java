@@ -14,7 +14,6 @@ import worst.woqued.client.features.modules.other.StreamerModule;
 import worst.woqued.client.features.modules.other.TPAcceptModule;
 import worst.woqued.client.features.modules.other.ToggleSoundsModule;
 import worst.woqued.client.features.modules.other.UseTrackerModule;
-import worst.woqued.client.features.modules.other.WindowTitleModule;
 import worst.woqued.client.features.modules.player.*;
 import worst.woqued.client.features.modules.render.*;
 import worst.woqued.client.features.modules.render.motionblur.MotionBlurModule;
@@ -105,7 +104,6 @@ public class ModuleManager {
                 TargetStrafeModule.getInstance(),
                 AntiAimModule.getInstance(),
                 ItemScrollerModule.getInstance(),
-                WindowTitleModule.getInstance(),
                 SmoothCameraModule.getInstance(),
                 JesusModule.getInstance(),
                 ScaffoldModule.getInstance(),

@@ -15,6 +15,7 @@ import worst.woqued.api.utils.math.MathUtil;
 import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.utils.render.ScissorUtil;
 import worst.woqued.client.features.modules.combat.AuraModule;
+import worst.woqued.client.features.modules.combat.AimAssistModule;
 import worst.woqued.client.ui.widget.Widget;
 
 import java.awt.*;
@@ -139,7 +140,12 @@ public class TargetInfoWidget extends Widget {
 
     private LivingEntity getTarget() {
         AuraModule aura = AuraModule.getInstance();
+        AimAssistModule aimAssist = AimAssistModule.getInstance();
+        
         if (aura.isEnabled() && aura.target != null) return aura.target;
+        if (aimAssist.isEnabled() && aimAssist.getCurrentTarget() instanceof LivingEntity) {
+            return (LivingEntity) aimAssist.getCurrentTarget();
+        }
         if (mc.currentScreen instanceof ChatScreen) return mc.player;
         return null;
     }
