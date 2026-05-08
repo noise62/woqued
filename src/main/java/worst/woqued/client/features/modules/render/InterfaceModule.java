@@ -22,7 +22,7 @@ public class InterfaceModule extends Module {
         ThemeEditor.getInstance().setOpen(!ThemeEditor.getInstance().isOpen());
     });
     public final SliderSetting scale = new SliderSetting("Scale").value(0.9f).range(0.6f, 1.5f).step(0.05f).onAction(() -> RenderService.getInstance().updateScale());
-    public final SliderSetting glassy = new SliderSetting("Glassy").value(0.4f).range(0.0f, 1f).step(0.1f);
+    public final SliderSetting glassy = new SliderSetting("Glassy").value(0.0f).range(0.0f, 1f).step(0.1f);
     public final SliderSetting passes = new SliderSetting("Passes").value(3f).range(1f, 5f).step(1f).onAction(KawaseBlurProgram::recreate);
     public final SliderSetting offset = new SliderSetting("Offset").value(12f).range(5f, 25f).step(1f);
 

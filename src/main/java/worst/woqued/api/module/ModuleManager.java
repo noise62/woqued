@@ -111,6 +111,7 @@ public class ModuleManager {
                 CrystalOptimizer.getInstance(),
                 DiscordRPCModule.getInstance(),
                 AutoAppleFarmModule.getInstance(),
+                AutoCartModule.getInstance(),
                 FlightModule.getInstance()
         );
 

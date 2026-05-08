@@ -12,6 +12,7 @@ import worst.woqued.api.module.setting.ModeSetting;
 import worst.woqued.api.system.backend.Choice;
 import worst.woqued.client.features.modules.movement.noslow.modes.*;
 import worst.woqued.client.features.modules.movement.noslow.modes.NoSlowCancel;
+import worst.woqued.client.features.modules.movement.noslow.modes.NoSlowFunTime;
 import worst.woqued.client.features.modules.movement.noslow.modes.NoSlowGrim;
 import worst.woqued.client.features.modules.movement.noslow.modes.NoSlowReallyWorld;
 import worst.woqued.client.features.modules.movement.noslow.modes.NoSlowSlotUpdate;
@@ -24,9 +25,10 @@ public class NoSlowModule extends Module {
     private final NoSlowSlotUpdate noSlowSlotUpdate = new NoSlowSlotUpdate();
     private final NoSlowGrim noSlowGrim = new NoSlowGrim();
     private final NoSlowReallyWorld noSlowReallyWorld = new NoSlowReallyWorld();
+    private final NoSlowFunTime noSlowFunTime = new NoSlowFunTime();
 
     private final NoSlowMode[] modes = new NoSlowMode[]{
-            noSlowCancel, noSlowSlotUpdate, noSlowGrim, noSlowReallyWorld
+            noSlowCancel, noSlowSlotUpdate, noSlowGrim, noSlowReallyWorld, noSlowFunTime
     };
 
     private NoSlowMode currentMode = noSlowCancel;
