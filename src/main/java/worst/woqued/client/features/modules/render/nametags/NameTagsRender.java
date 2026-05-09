@@ -1,5 +1,6 @@
 package worst.woqued.client.features.modules.render.nametags;
 
+import worst.woqued.api.utils.render.display.BoxRender;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
@@ -7,16 +8,22 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector2f;
+import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.event.events.render.Render2DEvent;
+import worst.woqued.api.event.events.render.Render3DEvent;
 import worst.woqued.api.system.configs.FriendManager;
 import worst.woqued.api.system.interfaces.QuickImports;
+import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.math.MathUtil;
 import worst.woqued.api.utils.math.ProjectionUtil;
 import worst.woqued.api.utils.render.RenderUtil;
+import worst.woqued.api.utils.render.display.BlurRectRender;
 import worst.woqued.api.utils.render.fonts.Font;
 import worst.woqued.api.utils.render.fonts.Fonts;
+import worst.woqued.client.features.modules.render.InterfaceModule;
 
 import java.awt.*;
 
@@ -31,28 +38,38 @@ public class NameTagsRender implements QuickImports {
         this.nameTagsPotions = new NameTagsPotions(module);
     }
 
-    public void onRender(Render2DEvent.Render2DEventData event) {
+    public void onRender2D(Render2DEvent.Render2DEventData event) {
         for (Entity entity1 : mc.world.getEntities()) {
-            if (entity1 instanceof LivingEntity entity) {
-                if (module.entityFilter.isValid(entity) ||
-                        entity == mc.player && module.targets.isEnabled("Self") && !mc.options.getPerspective().isFirstPerson()) {
-                    renderTag(entity, event.context());
+            if (entity1 instanceof PlayerEntity player) {
+                if (module.entityFilter.isValid(player) ||
+                        player == mc.player && module.targets.isEnabled("Self") && !mc.options.getPerspective().isFirstPerson()) {
+                    renderTag(player, event.context(), event.partialTicks());
                 }
             }
         }
     }
 
-    private void renderTag(Entity entity, DrawContext context) {
-        double xI = MathUtil.interpolate(entity.prevX, entity.getX());
-        double yI = MathUtil.interpolate(entity.prevY, entity.getY());
-        double zI = MathUtil.interpolate(entity.prevZ, entity.getZ());
+public void onRender3D(Render3DEvent.Render3DEventData event) {
+        if (!module.box3d.getValue()) return;
 
-        Box box = entity.getBoundingBox();
-        double sizeX = box.maxX - box.minX;
-        double sizeY = box.maxY - box.minY;
-        double sizeZ = box.maxZ - box.minZ;
+        for (Entity entity1 : mc.world.getEntities()) {
+            if (entity1 instanceof PlayerEntity player) {
+                if (module.entityFilter.isValid(player) ||
+                        player == mc.player && module.targets.isEnabled("Self") && !mc.options.getPerspective().isFirstPerson()) {
+                    double xI = MathHelper.lerp(event.partialTicks(), entity1.prevX, entity1.getX());
+                    double yI = MathHelper.lerp(event.partialTicks(), entity1.prevY, entity1.getY());
+                    double zI = MathHelper.lerp(event.partialTicks(), entity1.prevZ, entity1.getZ());
+                    render3DBox(player, xI, yI, zI);
+                }
+            }
+        }
+    }
 
-        Box box1 = new Box(xI - sizeX / 2, yI, zI - sizeZ / 2, xI + sizeX / 2, yI + sizeY, zI + sizeZ / 2);
+    private void renderTag(Entity entity, DrawContext context, float partialTicks) {
+        double xI = MathHelper.lerp(partialTicks, entity.prevX, entity.getX());
+        double yI = MathHelper.lerp(partialTicks, entity.prevY, entity.getY());
+        double zI = MathHelper.lerp(partialTicks, entity.prevZ, entity.getZ());
+        Box box = entity.getBoundingBox().offset(xI - entity.getX(), yI - entity.getY(), zI - entity.getZ());
 
         float minX = Float.MAX_VALUE;
         float minY = Float.MAX_VALUE;
@@ -60,9 +77,9 @@ public class NameTagsRender implements QuickImports {
         float maxY = Float.MIN_VALUE;
 
         for (int i = 0; i < 8; i++) {
-            double cornerX = (i % 2 == 0) ? box1.minX : box1.maxX;
-            double cornerY = ((i / 2) % 2 == 0) ? box1.minY : box1.maxY;
-            double cornerZ = ((i / 4) % 2 == 0) ? box1.minZ : box1.maxZ;
+            double cornerX = (i % 2 == 0) ? box.minX : box.maxX;
+            double cornerY = ((i / 2) % 2 == 0) ? box.minY : box.maxY;
+            double cornerZ = ((i / 4) % 2 == 0) ? box.minZ : box.maxZ;
 
             Vector2f projected = ProjectionUtil.project(new Vec3d(cornerX, cornerY, cornerZ));
 
@@ -135,5 +152,21 @@ public class NameTagsRender implements QuickImports {
         }
 
         font.drawText(matrixStack, name, textX, textY, size, module.textColor.getValue());
+    }
+
+private void render3DBox(Entity entity, double x, double y, double z) {
+        float width = entity.getWidth();
+        float height = entity.getHeight();
+
+        float posX = (float) x;
+        float posY = (float) y + 1f;
+        float posZ = (float) z;
+
+        Color themeColor = UIColors.primary();
+        float alpha = module.boxAlpha.getValue();
+
+        Color fillColor = new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), (int) (alpha * 255));
+
+        RenderUtil.BOX.drawBox(posX, posY, posZ, posX + width, posY + height, posZ + width, 3.0f, fillColor, BoxRender.Render.STRIPED, width / 5.5f);
     }
 }

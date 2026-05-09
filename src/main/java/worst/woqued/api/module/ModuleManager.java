@@ -114,6 +114,7 @@ public class ModuleManager {
                 AutoAppleFarmModule.getInstance(),
                 AutoCartModule.getInstance(),
                 NavalnyModule.getInstance(),
+                AirStuckModule.getInstance(),
                 FlightModule.getInstance()
         );
 

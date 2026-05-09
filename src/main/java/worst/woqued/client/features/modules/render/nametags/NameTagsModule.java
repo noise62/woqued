@@ -4,6 +4,7 @@ import lombok.Getter;
 import worst.woqued.api.event.Listener;
 import worst.woqued.api.event.EventListener;
 import worst.woqued.api.event.events.render.Render2DEvent;
+import worst.woqued.api.event.events.render.Render3DEvent;
 import worst.woqued.api.module.Category;
 import worst.woqued.api.module.Module;
 import worst.woqued.api.module.ModuleRegister;
@@ -41,6 +42,8 @@ public class NameTagsModule extends Module {
     );
 
     public final SliderSetting glassy = new SliderSetting("Glassy").value(0.5f).range(0.0f, 1f).step(0.1f);
+    public final BooleanSetting box3d = new BooleanSetting("3D Box").value(false);
+    public final SliderSetting boxAlpha = new SliderSetting("Box Alpha").value(0.3f).range(0.0f, 1f).step(0.1f).setVisible(() -> box3d.getValue());
     public final ColorSetting textColor = new ColorSetting("Text color").value(new Color(255, 255, 255));
     public final ColorSetting color = new ColorSetting("Color").value(new Color(20, 20, 20));
     public final ColorSetting friendColor = new ColorSetting("Friend color").value(new Color(132, 229, 121)).setVisible(() -> targets.isEnabled("Players") || targets.isEnabled("Self"));
@@ -50,7 +53,7 @@ public class NameTagsModule extends Module {
     private final NameTagsRender nameTagsRender = new NameTagsRender(this);
 
     public NameTagsModule() {
-        addSettings(targets, scale, information, options, glassy, textColor, color, friendColor);
+        addSettings(targets, scale, information, options, glassy, box3d, boxAlpha, textColor, color, friendColor);
     }
 
     @Override
@@ -59,9 +62,16 @@ public class NameTagsModule extends Module {
             entityFilter.targetSettings = targets.getList();
             entityFilter.needFriends = true;
 
-            nameTagsRender.onRender(event);
+            nameTagsRender.onRender2D(event);
         }));
 
-        addEvents(render2DEvent);
+        EventListener render3DEvent = Render3DEvent.getInstance().subscribe(new Listener<>(event -> {
+            entityFilter.targetSettings = targets.getList();
+            entityFilter.needFriends = true;
+
+            nameTagsRender.onRender3D(event);
+        }));
+
+        addEvents(render2DEvent, render3DEvent);
     }
 }
