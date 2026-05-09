@@ -47,7 +47,7 @@ public class SprintModule extends Module {
     public boolean hasForwardMovement() {
         RotationManager rotationManager = RotationManager.getInstance();
         RotationPlan plan = rotationManager.getCurrentRotationPlan();
-        if (plan == null || plan.provider() instanceof StrafeModule || plan.moveCorrection() || mode.is("None")) {
+        if (plan == null || plan.moveCorrection() || mode.is("None")) {
             return false;
         }
 

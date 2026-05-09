@@ -5,6 +5,8 @@ import net.minecraft.client.input.KeyboardInput;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import worst.woqued.api.event.Listener;
 import worst.woqued.api.event.EventListener;
 import worst.woqued.api.event.events.other.RotationUpdateEvent;
@@ -69,7 +71,7 @@ public class AuraModule extends Module {
     );
 
     public boolean isFree() {
-        return moveCorrection.is("Free");
+        return moveCorrection.is("No Correction");
     }
 
     public static boolean isTargeting() {
@@ -95,7 +97,7 @@ public class AuraModule extends Module {
     private final SliderSetting elytraDistance = new SliderSetting("Elytra distance").value(4f).range(2.5f, 6f).step(0.1f).setVisible(elytraOverride::getValue);
     private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
     
-    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "Free", "No Correction");
+    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "No Correction");
 
     public LivingEntity target;
     private LivingEntity previousTarget = null;
@@ -232,7 +234,7 @@ public class AuraModule extends Module {
     private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {
         if (combatExecutor.combatManager().configurable() == null) return;
         
-        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus"), moveCorrection.is("Free")).clientLook(clientLook.getValue());
+        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus"), moveCorrection.is("No Correction")).clientLook(clientLook.getValue());
 
         boolean noHitRule = (!combatExecutor.combatManager().canAttack());
 
@@ -288,34 +290,28 @@ public class AuraModule extends Module {
         float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
         float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
 
-        // Если не двигаемся, не применяем коррекцию
         if (z == 0 && x == 0) {
             return input;
         }
 
         Vec3d aimPoint = getTargetVector(target);
-        double deltaX = aimPoint.x - player.getX();
-        double deltaZ = aimPoint.z - player.getZ();
+        double deltaX = aimPoint.x - player.getPos().x;
+        double deltaZ = aimPoint.z - player.getPos().z;
 
-        // Угол к цели относительно мира
         double angleToTarget = Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0;
         angleToTarget = MathHelper.wrapDegrees(angleToTarget);
 
         float yaw = player.getYaw();
-        
-        // Вычисляем желаемое направление движения относительно взгляда игрока
+
         float relativeAngle = (float)(angleToTarget - yaw);
         relativeAngle = MathHelper.wrapDegrees(relativeAngle);
 
-        // Конвертируем относительный угол в направление (forward/strafe)
         float moveForward = MathHelper.cos(relativeAngle * 0.017453292f);
         float moveStrafe = -MathHelper.sin(relativeAngle * 0.017453292f);
 
-        // Округляем до дискретных значений (-1, 0, 1)
         int forward = Math.round(moveForward);
         int strafe = Math.round(moveStrafe);
 
-        // Сохраняем направление (вперед/назад) от оригинального ввода
         boolean movingBackwards = input.isBackwards();
         if (movingBackwards && forward > 0) {
             forward = -Math.abs(forward);
@@ -324,6 +320,10 @@ public class AuraModule extends Module {
         }
 
         return new DirectionalInput(forward, strafe);
+    }
+
+public DirectionalInput transformDirectionForFree(DirectionalInput input) {
+        return input;
     }
 
     /**
@@ -342,13 +342,13 @@ public class AuraModule extends Module {
             return transformDirectionForTargeting(input);
         }
 
-        if (moveCorrection.is("Free")) {
-            return input;
+        if (moveCorrection.is("No Correction")) {
+            return transformDirectionForFree(input);
         }
 
         return input;
     }
-    
+
     public void applyMovementCorrection() {
     }
 }

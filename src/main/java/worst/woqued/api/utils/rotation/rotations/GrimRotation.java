@@ -15,6 +15,8 @@ public class GrimRotation extends RotationMode {
     private static float lastYaw = 0;
     private static float lastPitch = 0;
     private static long lastUpdateTime = 0;
+    private static long framesSinceLastBreak = 0;
+    private static boolean lastWasBreak = false;
 
     public GrimRotation() {
         super("Grim");
@@ -23,7 +25,6 @@ public class GrimRotation extends RotationMode {
     @Override
     public Rotation process(Rotation currentRotation, Rotation targetRotation, Vec3d vec3d, Entity entity) {
         if (!(entity instanceof LivingEntity target)) {
-            // Плавное возвращение камеры как в MatrixRotation
             Rotation delta = RotationUtil.calculateDelta(currentRotation, targetRotation);
             float yawDelta = delta.getYaw();
             float pitchDelta = delta.getPitch();
@@ -48,21 +49,31 @@ public class GrimRotation extends RotationMode {
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
 
-        // Позиция с предсказанием
         Vec3d targetPos = predictTargetPosition(target, deltaTime);
         Vec3d eyePos = mc.player.getEyePos();
         Vec3d direction = targetPos.subtract(eyePos);
 
-        // Базовые углы
         float targetYaw = (float) Math.toDegrees(Math.atan2(-direction.x, direction.z));
         float targetPitch = (float) Math.toDegrees(Math.asin(-direction.normalize().y));
         targetPitch = MathHelper.clamp(targetPitch, -89.0f, 89.0f);
 
-        // В оригинале здесь была нейросеть, заменим её на небольшую рандомизацию и сглаживание
-        // для стабильного обхода
-        float jitterAmount = 0.5f;
-        targetYaw += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * jitterAmount;
-        targetPitch += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * jitterAmount;
+        framesSinceLastBreak++;
+        float jitterAmount = 1.2f;
+        float microJitter = 0.3f;
+
+        float breakChance = 0.02f;
+        if (!lastWasBreak && ThreadLocalRandom.current().nextFloat() < breakChance && framesSinceLastBreak > 15) {
+            targetYaw += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * 8.0f;
+            targetPitch += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * 4.0f;
+            lastWasBreak = true;
+            framesSinceLastBreak = 0;
+        } else {
+            targetYaw += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * jitterAmount;
+            targetPitch += (ThreadLocalRandom.current().nextFloat() * 2 - 1) * jitterAmount;
+            targetYaw += (Math.sin(currentTime * 0.01) * microJitter);
+            targetPitch += (Math.cos(currentTime * 0.013) * microJitter);
+            lastWasBreak = false;
+        }
 
         float currentYaw = currentRotation.getYaw();
         float currentPitch = currentRotation.getPitch();
@@ -70,19 +81,22 @@ public class GrimRotation extends RotationMode {
         float yawDelta = MathHelper.wrapDegrees(targetYaw - currentYaw);
         float pitchDelta = targetPitch - currentPitch;
 
-        // Адаптивная скорость
         float distance = mc.player.distanceTo(target);
         boolean canAttack = AuraModule.getInstance().getCombatExecutor().combatManager().canAttack();
-        
+
         float speedMultiplier = calculateSpeedMultiplier(distance, canAttack);
 
-        float yawSpeed = 45.0f * speedMultiplier;
-        float pitchSpeed = 35.0f * speedMultiplier;
+        float yawSpeed = 40.0f * speedMultiplier;
+        float pitchSpeed = 20.0f * speedMultiplier;
 
         if (!canAttack) {
-            yawSpeed *= 0.7f;
-            pitchSpeed *= 0.7f;
+            yawSpeed *= 0.6f;
+            pitchSpeed *= 0.5f;
         }
+
+        float randomSpeedVariation = 0.85f + ThreadLocalRandom.current().nextFloat() * 0.3f;
+        yawSpeed *= randomSpeedVariation;
+        pitchSpeed *= randomSpeedVariation;
 
         float smoothYaw = currentYaw + MathHelper.clamp(yawDelta, -yawSpeed, yawSpeed);
         float smoothPitch = MathHelper.clamp(currentPitch + MathHelper.clamp(pitchDelta, -pitchSpeed, pitchSpeed), -89.0f, 89.0f);

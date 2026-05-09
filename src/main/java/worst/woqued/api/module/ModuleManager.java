@@ -35,7 +35,6 @@ public class ModuleManager {
                 SprintModule.getInstance(),
                 ClickGUIModule.getInstance(),
                 AmbienceModule.getInstance(),
-                StrafeModule.getInstance(),
                 NoJumpDelayModule.getInstance(),
                 AuraModule.getInstance(),
                 AutoRespawnModule.getInstance(),
