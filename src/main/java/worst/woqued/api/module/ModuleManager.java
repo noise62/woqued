@@ -106,12 +106,14 @@ public class ModuleManager {
                 ItemScrollerModule.getInstance(),
                 SmoothCameraModule.getInstance(),
                 JesusModule.getInstance(),
+                EagleModule.getInstance(),
                 ScaffoldModule.getInstance(),
                 ChestStealerModule.getInstance(),
                 CrystalOptimizer.getInstance(),
                 DiscordRPCModule.getInstance(),
                 AutoAppleFarmModule.getInstance(),
                 AutoCartModule.getInstance(),
+                NavalnyModule.getInstance(),
                 FlightModule.getInstance()
         );
 

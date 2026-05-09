@@ -12,6 +12,10 @@ public class AimAssistRotation extends RotationMode {
     private float lastPlayerYaw;
     private float lastPlayerPitch;
     private boolean initialized = false;
+    private boolean returningToTarget = false;
+    private long returnStartTime = 0;
+
+    private static final float RETURN_SPEED = 0.15f;
 
     public AimAssistRotation() {
         super("AimAssist");
@@ -43,38 +47,62 @@ public class AimAssistRotation extends RotationMode {
         lastPlayerPitch = playerPitch;
 
         if (playerMovingCamera) {
-            return new Rotation(playerYaw, playerPitch);
+            if (!returningToTarget) {
+                returningToTarget = true;
+                returnStartTime = System.currentTimeMillis();
+            }
+        } else if (returningToTarget) {
+            boolean stillAimingAway = Math.abs(playerYawDelta) > 0.05f || Math.abs(playerPitchDelta) > 0.05f;
+            if (!stillAimingAway) {
+                returningToTarget = false;
+            }
         }
 
-        float aimSpeed = aimAssist.getAimSpeed().getValue();
-        boolean autoPitch = aimAssist.getAutoPitch().getValue();
+        if (aimAssist.isEnabled() && entity != null) {
+            float yawDelta = MathHelper.wrapDegrees(targetRotation.getYaw() - currentRotation.getYaw());
+            float pitchDelta = targetRotation.getPitch() - currentRotation.getPitch();
 
-        float yawDelta = MathHelper.wrapDegrees(targetRotation.getYaw() - currentRotation.getYaw());
-        float pitchDelta = targetRotation.getPitch() - currentRotation.getPitch();
+            float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
 
-        float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
+            if (returningToTarget) {
+                float timeSinceReturn = (System.currentTimeMillis() - returnStartTime) / 1000f;
+                float smoothProgress = Math.min(1.0f, timeSinceReturn * 1.5f);
 
-        if (rotationDifference > 180f) {
-            return targetRotation;
+                float progressSpeed = RETURN_SPEED * smoothProgress;
+
+                float progressYaw = currentRotation.getYaw() + yawDelta * progressSpeed;
+                float progressPitch = currentRotation.getPitch() + pitchDelta * progressSpeed;
+
+                return new Rotation(progressYaw, progressPitch);
+            }
+
+            if (rotationDifference > 180f) {
+                return targetRotation;
+            }
+
+            float aimSpeed = aimAssist.getAimSpeed().getValue();
+            boolean autoPitch = aimAssist.getAutoPitch().getValue();
+
+            float speedFactor = Math.min(1.0f, rotationDifference / 30.0f);
+            float lerpFactor = (aimSpeed / 60.0f) * (0.3f + speedFactor * 0.7f);
+
+            if (!autoPitch) {
+                float clampedPitch = MathHelper.clamp(targetRotation.getPitch(), -15.0f, 15.0f);
+                pitchDelta = clampedPitch - currentRotation.getPitch();
+            }
+
+            float maxYawPerTick = aimSpeed * 1.5f;
+            float maxPitchPerTick = aimSpeed * 1.2f;
+
+            float moveYaw = MathHelper.clamp(yawDelta, -maxYawPerTick, maxYawPerTick);
+            float movePitch = MathHelper.clamp(pitchDelta, -maxPitchPerTick, maxPitchPerTick);
+
+            return new Rotation(
+                    currentRotation.getYaw() + moveYaw * lerpFactor,
+                    currentRotation.getPitch() + movePitch * lerpFactor
+            );
         }
 
-        float speedFactor = Math.min(1.0f, rotationDifference / 30.0f);
-        float lerpFactor = (aimSpeed / 60.0f) * (0.3f + speedFactor * 0.7f);
-        
-        if (!autoPitch) {
-            float clampedPitch = MathHelper.clamp(targetRotation.getPitch(), -15.0f, 15.0f);
-            pitchDelta = clampedPitch - currentRotation.getPitch();
-        }
-
-        float maxYawPerTick = aimSpeed * 1.5f;
-        float maxPitchPerTick = aimSpeed * 1.2f;
-        
-        float moveYaw = MathHelper.clamp(yawDelta, -maxYawPerTick, maxYawPerTick);
-        float movePitch = MathHelper.clamp(pitchDelta, -maxPitchPerTick, maxPitchPerTick);
-
-        return new Rotation(
-                currentRotation.getYaw() + moveYaw * lerpFactor,
-                currentRotation.getPitch() + movePitch * lerpFactor
-        );
+        return new Rotation(playerYaw, playerPitch);
     }
 }

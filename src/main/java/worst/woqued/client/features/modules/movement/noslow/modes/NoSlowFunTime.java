@@ -37,7 +37,8 @@ public class NoSlowFunTime extends NoSlowMode {
         ItemStack active = mc.player.getActiveItem();
         if (!isConsumable(active)) return false;
 
-        if (InventoryUtil.findItem(Items.CROSSBOW, false) == -1) return false;
+        boolean hasCrossbowInOffhand = mc.player.getOffHandStack().isOf(Items.CROSSBOW);
+        if (!hasCrossbowInOffhand && InventoryUtil.findItem(Items.CROSSBOW, false) == -1) return false;
 
         mc.player.setSprinting(
                 !mc.player.isGliding()
@@ -48,12 +49,14 @@ public class NoSlowFunTime extends NoSlowMode {
 
     private void handleCrossbowSwap() {
         if (funtimeSwapped || mc.player == null) return;
+
+        boolean hasCrossbowInOffhand = mc.player.getOffHandStack().isOf(Items.CROSSBOW);
+        if (hasCrossbowInOffhand) return;
+
         if (!mc.player.isUsingItem() || mc.player.getActiveHand() != Hand.MAIN_HAND) return;
 
         ItemStack active = mc.player.getActiveItem();
         if (!isConsumable(active)) return;
-
-        if (mc.player.getOffHandStack().isOf(Items.CROSSBOW)) return;
 
         int crossbowSlot = InventoryUtil.findItem(Items.CROSSBOW, false);
         if (crossbowSlot == -1) return;

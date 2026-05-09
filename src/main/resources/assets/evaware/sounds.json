@@ -44,12 +44,6 @@
       "evaware:tech_on"
     ]
   },
-  "mell": {
-    "sounds": [
-      "evaware:mell"
-    ]
-  }
-}
   "tech_off": {
     "sounds": [
       "evaware:tech_off"
@@ -63,6 +57,16 @@
   "blop_off": {
     "sounds": [
       "evaware:blop_off"
+    ]
+  },
+  "mell": {
+    "sounds": [
+      "evaware:mell"
+    ]
+  },
+  "navalny": {
+    "sounds": [
+      "evaware:navalny"
     ]
   }
 }

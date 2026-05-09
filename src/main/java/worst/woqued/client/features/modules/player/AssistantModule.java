@@ -41,13 +41,15 @@ public class AssistantModule extends Module {
 
     public enum Mode {
         FUNTIME,
-        HOLYWORLD;
+        HOLYWORLD,
+        REALLY_WORLD;
 
     }
 
     private final Supplier<Boolean> isHotkeysEnabled = () -> getFunctions().isEnabled("Hotkeys");
     private final Supplier<Boolean> isHWKeys = () -> isHotkeysEnabled.get() && getMode().is("Holy World");
     private final Supplier<Boolean> isFTKeys = () -> isHotkeysEnabled.get() && getMode().is("Fun Time");
+    private final Supplier<Boolean> isRWKeys = () -> isHotkeysEnabled.get() && getMode().is("Really World");
 
     private Mode currentMode = Mode.FUNTIME;
 
@@ -61,11 +63,12 @@ public class AssistantModule extends Module {
     );
 
     @Getter private final ModeSetting mode = new ModeSetting("Mode").value("Fun Time")
-            .values("Fun Time", "Holy World").setVisible(isHotkeysEnabled)
+            .values("Fun Time", "Holy World", "Really World").setVisible(isHotkeysEnabled)
             .onAction(() -> {
                 currentMode = switch (getMode().getValue()) {
                     case "Fun Time" -> Mode.FUNTIME;
-                    default -> Mode.HOLYWORLD;
+                    case "Holy World" -> Mode.HOLYWORLD;
+                    default -> Mode.REALLY_WORLD;
                 };
             });
 
@@ -93,11 +96,18 @@ public class AssistantModule extends Module {
         keyBindings.put(new InventoryUtil.ItemUsage(Items.NETHER_STAR, this), new Pair<>(new BindSetting("Stun").value(-999), Mode.HOLYWORLD));
         keyBindings.put(new InventoryUtil.ItemUsage(Items.FIRE_CHARGE, this), new Pair<>(new BindSetting("Explosive thing").value(-999), Mode.HOLYWORLD));
 
+        keyBindings.put(new InventoryUtil.ItemUsage(Items.FIREWORK_STAR, this), new Pair<>(new BindSetting("Anti flight").value(-999), Mode.REALLY_WORLD));
+        keyBindings.put(new InventoryUtil.ItemUsage(Items.FLOWER_BANNER_PATTERN, this), new Pair<>(new BindSetting("Exp scroll").value(-999), Mode.REALLY_WORLD));
+        keyBindings.put(new InventoryUtil.ItemUsage(Items.SNOWBALL, this), new Pair<>(new BindSetting("Snowball freeze").value(-999), Mode.REALLY_WORLD));
+
         addSettings(functions, mode);
 
         keyBindings.forEach((key, value) -> {
             if (value.right() == Mode.HOLYWORLD) {
                 value.left().setVisible(isHWKeys);
+            }
+            if (value.right() == Mode.REALLY_WORLD) {
+                value.left().setVisible(isRWKeys);
             }
             if (value.right() == Mode.FUNTIME) {
                 value.left().setVisible(isFTKeys);

@@ -3,132 +3,154 @@ package worst.woqued.api.utils.rotation.rotations;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import worst.woqued.api.utils.math.MathUtil;
-import worst.woqued.api.utils.player.MoveUtil;
 import worst.woqued.api.utils.rotation.RotationUtil;
 import worst.woqued.api.utils.rotation.manager.Rotation;
 import worst.woqued.api.utils.rotation.manager.RotationMode;
+import worst.woqued.client.features.modules.combat.AuraModule;
 
-// kurwa code
+import java.util.Random;
+
 public class FunTimeRotation extends RotationMode {
     public static boolean attack;
-
-    public static int attackedTicks = 0;
     public static int attackCount = 0;
 
-    public static int idAttack = 0;
+    private static final float[] SWING_THRESHOLDS = new float[]{50f, 230f};
 
-    public static long lastAttack = 0;
-    public static float jitterUniquePower = 0f;
+    private static int lastCount = -1;
+    private static int hitsAfterMiss = 0;
+    private static long missEndTime = 0;
 
-    public static boolean firstAttack = true;
+    private float currentJitterYaw = 0;
+    private float currentJitterPitch = 0;
+    private float targetJitterYaw = 0;
+    private float targetJitterPitch = 0;
 
-    private boolean releasing = false;
+    private final Random random = new Random();
+
+    private int swingStage = 0;
+    private long swingTimer = 0;
 
     public FunTimeRotation() {
         super("FunTime");
     }
 
-    /**
-     * Плавное возвращение теперь обрабатывается в process() при entity == null.
-     * Оставлен для обратной совместимости.
-     */
-    public void startRelease() {
-        releasing = true;
-    }
-
-    public boolean isReleasing() {
-        return releasing;
-    }
-
     public static void updateAttackState(boolean attack) {
         FunTimeRotation.attack = attack;
+    }
 
-        if (attack) {
-            attackCount++;
-            if (firstAttack && attackCount >= 2) {
-                firstAttack = false;
-                attackCount = 0;
-            }
-
-            jitterUniquePower = MathUtil.randomInRange(5f, 15f);
-
-            lastAttack = System.currentTimeMillis();
-
-            idAttack = MathUtil.randomInRange(0, 1);
-
-            attackedTicks = MathUtil.randomInRange(12, 16) * 3;
+    public void startRelease() {
+        if (swingStage == 0) {
+            swingStage = 1;
+            swingTimer = System.currentTimeMillis();
         }
     }
 
     @Override
     public Rotation process(Rotation currentRotation, Rotation targetRotation, Vec3d vec3d, Entity entity) {
-        if (entity == null) {
-            // Плавное возвращение камеры к камере игрока (как в Rich FTAngle)
-            Rotation cameraRotation = RotationUtil.fromVec2f(mc.player.getRotationClient());
-            Rotation delta = RotationUtil.calculateDelta(currentRotation, cameraRotation);
-            float yawDelta = delta.getYaw();
-            float pitchDelta = delta.getPitch();
-            float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
+        long now = System.currentTimeMillis();
+        var combatManager = AuraModule.getInstance().combatExecutor.combatManager();
 
-            float speedFactor = MathHelper.clamp(1f - (rotationDifference / 180.0f), 0.05f, 0.4f);
-            float speed = 0.35F * speedFactor;
-
-            float lineYaw = rotationDifference > 0 ? (Math.abs(yawDelta / rotationDifference) * 360) : 360;
-            float linePitch = rotationDifference > 0 ? (Math.abs(pitchDelta / rotationDifference) * 180) : 180;
-
-            float moveYaw = MathHelper.clamp(yawDelta, -lineYaw, lineYaw);
-            float movePitch = MathHelper.clamp(pitchDelta, -linePitch, linePitch);
-
-            return new Rotation(
-                    MathHelper.lerp(speed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw),
-                    MathHelper.lerp(speed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch)
-            );
+        if (combatManager.canAttack()) {
+            if (lastCount != -1 && lastCount != attackCount) {
+                hitsAfterMiss++;
+            }
+            lastCount = attackCount;
         } else {
-            releasing = false;
+            lastCount = -1;
         }
 
-        if (attackedTicks > 0) attackedTicks = Math.max(attackedTicks - 1, 0);
-
-        boolean intensiveAttack = System.currentTimeMillis() - lastAttack < 500;
-        boolean lateAttack = System.currentTimeMillis() - lastAttack > 800;
-
-        float prevPitch = targetRotation.getPitch();
-
-        if (!MoveUtil.isMoving() && !attack && attackedTicks > 9 * 3) {
-            float prevYaw = targetRotation.getYaw();
-
-            float jitterPower = 45f + jitterUniquePower;
-            float jitter = firstAttack ? 0f : idAttack == 0 ? -jitterPower : jitterPower;
-
-            targetRotation = new Rotation(prevYaw + jitter, prevPitch);
+        if (hitsAfterMiss >= 40 && missEndTime == 0) {
+            missEndTime = now + 350;
+            hitsAfterMiss = 0;
+            swingStage = 0;
         }
 
-        float swing = (float) (Math.sin(mc.player.age * 0.9f) * MathUtil.randomInRange(16.8f, 17.1f));
-
-        float yawSpeed = 69f / 3f;
-        float pitchSpeed = 15f / 3f;
-
-        if (lateAttack) {
-            firstAttack = true;
-            targetRotation = new Rotation(mc.player.getYaw(), prevPitch);
-            yawSpeed *= 0.2f;
+        if (missEndTime != 0) {
+            if (now < missEndTime) {
+                long missedElapsed = now - (missEndTime - 350);
+                if (swingStage == 0 && missedElapsed >= SWING_THRESHOLDS[0]) {
+                    mc.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    swingStage = 1;
+                } else if (swingStage == 1 && missedElapsed >= SWING_THRESHOLDS[1]) {
+                    mc.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    swingStage = 2;
+                }
+                return new Rotation(currentRotation.getYaw() + random.nextFloat() * 6 - 3, -80);
+            } else {
+                missEndTime = 0;
+                swingStage = 0;
+            }
         }
 
         Rotation delta = RotationUtil.calculateDelta(currentRotation, targetRotation);
         float yawDelta = delta.getYaw();
         float pitchDelta = delta.getPitch();
+        float rotationDifference = (float) Math.hypot(Math.abs(yawDelta), Math.abs(pitchDelta));
 
-        boolean glitchDelta = !attack && intensiveAttack && MoveUtil.isMoving();
+        if (rotationDifference < 0.01f) rotationDifference = 1;
 
-        float finalDeltaYaw = glitchDelta ? swing / 3f : yawDelta + swing;
-        float finalDeltaPitch = glitchDelta ? 0f : pitchDelta;
+        int suck = attackCount % 3;
+        long elapsed = combatManager.clickScheduler.lastClickPassed();
+        float timeRandom = elapsed / 80f + (attackCount % 6);
 
-        float finalYaw = currentRotation.getYaw() + MathHelper.clamp(finalDeltaYaw, -yawSpeed, yawSpeed);
-        float finalPitch = currentRotation.getPitch() + MathHelper.clamp(finalDeltaPitch, -pitchSpeed, pitchSpeed);
+        float randomYaw = switch (suck) {
+            case 0 -> (float) Math.cos(timeRandom);
+            case 1 -> (float) Math.sin(timeRandom);
+            case 2 -> (float) Math.sin(timeRandom);
+            default -> (float) -Math.cos(timeRandom);
+        };
 
-        return new Rotation(
-                finalYaw, finalPitch
-        );
+        float randomPitch = switch (suck) {
+            case 0 -> (float) Math.sin(timeRandom);
+            case 1 -> (float) Math.cos(timeRandom);
+            case 2 -> (float) -Math.cos(timeRandom);
+            default -> (float) Math.sin(timeRandom);
+        };
+
+        targetJitterYaw = randomLerp(11, 20) * randomYaw;
+        targetJitterPitch = randomLerp(1, 6) * randomPitch + randomLerp(2, 1) * (float) Math.cos(System.currentTimeMillis() / 8000.0);
+
+        float jitterSmoothSpeed = 1f;
+        currentJitterYaw += (targetJitterYaw - currentJitterYaw) * jitterSmoothSpeed;
+        currentJitterPitch += (targetJitterPitch - currentJitterPitch) * jitterSmoothSpeed;
+
+        if (entity != null) {
+            float speed = combatManager.canAttack() ? 0.9f : (random.nextBoolean() ? 0.1f : 0.2f);
+
+            float lineYaw = Math.abs(yawDelta / rotationDifference) * 180;
+            float linePitch = Math.abs(pitchDelta / rotationDifference) * 180;
+
+            float moveYaw = MathHelper.clamp(yawDelta, -lineYaw, lineYaw);
+            float movePitch = MathHelper.clamp(pitchDelta, -linePitch, linePitch);
+
+            float lerpSpeed = randomLerp(speed, speed + 0.6f);
+
+            float newYaw = MathHelper.lerp(lerpSpeed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw) + currentJitterYaw;
+            float newPitch = MathHelper.lerp(lerpSpeed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch) + currentJitterPitch;
+
+            return new Rotation(newYaw, MathHelper.clamp(newPitch, -90, 90));
+        } else {
+            float speed = elapsed > 650 ? (random.nextBoolean() ? 0.85f : 0.2f) : -0.2f;
+
+            float yawJitter = elapsed < 2000 ? currentJitterYaw : 0;
+            float pitchJitter = elapsed < 2000 ? currentJitterPitch : 0;
+
+            float lineYaw = Math.abs(yawDelta / rotationDifference) * 180;
+            float linePitch = Math.abs(pitchDelta / rotationDifference) * 180;
+
+            float moveYaw = MathHelper.clamp(yawDelta, -lineYaw, lineYaw);
+            float movePitch = MathHelper.clamp(pitchDelta, -linePitch, linePitch);
+
+            float lerpSpeed = (float) Math.clamp(randomLerp(speed, speed + 0.2f), 0, 1);
+
+            float newYaw = MathHelper.lerp(lerpSpeed, currentRotation.getYaw(), currentRotation.getYaw() + moveYaw) + yawJitter;
+            float newPitch = MathHelper.lerp(lerpSpeed, currentRotation.getPitch(), currentRotation.getPitch() + movePitch) + pitchJitter;
+
+            return new Rotation(newYaw, MathHelper.clamp(newPitch, -90, 90));
+        }
+    }
+
+    private float randomLerp(float min, float max) {
+        return MathHelper.lerp(random.nextFloat(), min, max);
     }
 }

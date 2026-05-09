@@ -51,6 +51,10 @@ public class SoundUtil implements QuickImports {
     private final Identifier MELL_SOUND = Identifier.of(path() + "mell");
     public SoundEvent MELL_EVENT = SoundEvent.of(MELL_SOUND);
 
+    // navalny sound
+    private final Identifier NAVALNY_SOUND = Identifier.of(path() + "navalny");
+    public SoundEvent NAVALNY_EVENT = SoundEvent.of(NAVALNY_SOUND);
+
     public void load() {
         Registry.register(Registries.SOUND_EVENT, ENABLE_SMOOTH_SOUND, ENABLE_SMOOTH_EVENT);
         Registry.register(Registries.SOUND_EVENT, DISABLE_SMOOTH_SOUND, DISABLE_SMOOTH_EVENT);
@@ -71,6 +75,8 @@ public class SoundUtil implements QuickImports {
         Registry.register(Registries.SOUND_EVENT, DISABLE_BLOP_SOUND, DISABLE_BLOP_EVENT);
 
         Registry.register(Registries.SOUND_EVENT, MELL_SOUND, MELL_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, NAVALNY_SOUND, NAVALNY_EVENT);
     }
 
     public void playSound(SoundEvent sound) {

@@ -19,7 +19,8 @@ import worst.woqued.client.features.modules.movement.SprintModule;
 @Getter
 @Accessors(fluent = true, chain = true)
 public class CombatManager implements QuickImports {
-    private final ClickScheduler clickScheduler = new ClickScheduler();
+    @Getter
+    public final ClickScheduler clickScheduler = new ClickScheduler();
     private final SprintManager sprintManager = new SprintManager(SprintManager.SprintType.LEGIT);
     private final ShieldBreakManager shieldBreakManager = new ShieldBreakManager();
 
@@ -49,6 +50,7 @@ public class CombatManager implements QuickImports {
         FunTimeRotation.updateAttackState(canAttack());
 
         if (canAttack()) {
+            FunTimeRotation.attackCount++;
             if (isRaytraceFailed(getRaytraceEntity())) return;
 
             if (mc.player.isBlocking() && configurable.alwaysShield) {
