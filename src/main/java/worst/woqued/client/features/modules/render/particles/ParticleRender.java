@@ -68,12 +68,15 @@ public class ParticleRender implements QuickImports {
     }
 
     public static String[] textures = new String[]{
-            "Spark", "Star", "Heart", "Dollar", "Snowflake", "Glow", "Ball",
+            "Spark", "Star", "Heart", "Dollar", "Snowflake", "Glow", "Ball", "Tubik", "Kotokrol",
+            "Bitcoin", "Pixel Dollar",
     };
 
     public static Identifier getTexture(String mode) {
         return switch (mode) {
             case "Spark" -> FileUtil.getImage("particles/spark_" + MathUtil.randomInRange(1, 4));
+            case "Bitcoin" -> FileUtil.getImage("particles/bitcoin");
+            case "Pixel Dollar" -> FileUtil.getImage("particles/pixeldolar");
             default -> FileUtil.getImage("particles/" + mode.toLowerCase());
         };
     }

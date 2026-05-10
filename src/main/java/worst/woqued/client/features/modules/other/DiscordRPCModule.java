@@ -53,7 +53,7 @@ public class DiscordRPCModule extends Module {
 
         RichPresence presence = RichPresence.builder()
                 .details("Version: " + ClientInfo.VERSION)
-                .state("Subscription type: free")
+                .state("github.com/noise62/woqued")
                 .largeImageKey("ava")
                 .largeImageText("Woqued")
                 .build();

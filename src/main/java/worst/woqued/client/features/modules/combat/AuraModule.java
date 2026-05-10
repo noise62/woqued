@@ -41,6 +41,7 @@ import worst.woqued.api.utils.rotation.rotations.GrimRotation;
 import worst.woqued.api.utils.rotation.rotations.SnapRotation;
 import worst.woqued.api.utils.rotation.rotations.PolarRotation;
 import worst.woqued.api.utils.rotation.rotations.IntaveRotation;
+import worst.woqued.api.utils.rotation.rotations.SpookyDuelsRotation;
 
 
 import worst.woqued.api.utils.task.TaskPriority;
@@ -65,9 +66,10 @@ public class AuraModule extends Module {
     private final GrimRotation grimRotation = new GrimRotation();
     private final AresMineRotation aresMineRotation = new AresMineRotation();
     private final IntaveRotation intaveRotation = new IntaveRotation();
+    private final SpookyDuelsRotation spookyDuelsRotation = new SpookyDuelsRotation();
     
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Snap", "Ft snap", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar"
+            "Snap", "Ft snap", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar", "Spooky Duels"
     );
 
     public boolean isFree() {
@@ -262,6 +264,7 @@ public class AuraModule extends Module {
             case "MetaHvH" -> metaHvHRotation;
             case "Ares Mine" -> aresMineRotation;
             case "Polar" -> polarRotation;
+            case "Spooky Duels" -> spookyDuelsRotation;
             default -> new SnapRotation();
         };
     }

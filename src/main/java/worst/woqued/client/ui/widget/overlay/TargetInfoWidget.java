@@ -14,6 +14,8 @@ import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.math.MathUtil;
 import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.utils.render.ScissorUtil;
+import worst.woqued.api.utils.render.fonts.Font;
+import worst.woqued.api.utils.render.fonts.Fonts;
 import worst.woqued.client.features.modules.combat.AuraModule;
 import worst.woqued.client.features.modules.combat.AimAssistModule;
 import worst.woqued.client.ui.widget.Widget;
@@ -102,6 +104,11 @@ public class TargetInfoWidget extends Widget {
         float contentX = headX + headSize + spacing;
         String name = target.getName().getString();
 
+        Font iconFont = Fonts.WOQUED;
+        String hpIcon = "d";
+        float iconSize = scaled(6.5f);
+        float iconWidth = iconFont.getWidth(hpIcon, iconSize);
+
         // Центрирование текста по высоте
         float textYBase = y + spacing;
         
@@ -109,9 +116,17 @@ public class TargetInfoWidget extends Widget {
         getMediumFont().drawText(matrixStack, name, contentX, textYBase, scaled(7.5f),
                 ColorUtil.setAlpha(UIColors.textColor(), fullAlpha));
         
+        float hpIconX = contentX;
+        float hpTextY = textYBase + scaled(9f);
+        iconFont.drawGradientText(matrixStack, hpIcon, hpIconX, hpTextY, iconSize,
+                ColorUtil.setAlpha(UIColors.primary(), fullAlpha),
+                ColorUtil.setAlpha(UIColors.secondary(), fullAlpha),
+                iconWidth / 4f);
+        
         // Используем интерполированное значение
-        String hpText = String.format("HP: %.1f", interpolatedHealth).replace(',', '.');
-        getSemiBoldFont().drawText(matrixStack, hpText, contentX, textYBase + scaled(9f), scaled(6.5f),
+        String hpText = String.format("%.1f", interpolatedHealth).replace(',', '.');
+        float hpTextX = hpIconX + iconWidth + scaled(2f);
+        getSemiBoldFont().drawText(matrixStack, hpText, hpTextX, hpTextY, iconSize,
                 ColorUtil.setAlpha(UIColors.textColor(), (int) (fullAlpha * 0.9f)));
         ScissorUtil.stop(matrixStack);
 

@@ -7,7 +7,7 @@ import java.io.File;
 @UtilityClass
 public class ClientInfo {
     public final String NAME = "Woqued";
-    public final String VERSION = "1.6.0";
+    public final String VERSION = "1.11.0";
 
     public final String GAME_PATH = new File(System.getProperty("user.dir")).getAbsolutePath();
     public final String CONFIG_PATH_AI_MODELS = new File(System.getProperty("user.dir"), NAME + "/ai_models").getAbsolutePath();

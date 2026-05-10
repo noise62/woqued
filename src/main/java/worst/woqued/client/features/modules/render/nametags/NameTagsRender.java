@@ -23,6 +23,7 @@ import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.utils.render.display.BlurRectRender;
 import worst.woqued.api.utils.render.fonts.Font;
 import worst.woqued.api.utils.render.fonts.Fonts;
+import worst.woqued.client.features.modules.other.HealthResolverModule;
 import worst.woqued.client.features.modules.render.InterfaceModule;
 
 import java.awt.*;
@@ -118,24 +119,41 @@ public void onRender3D(Render3DEvent.Render3DEventData event) {
     private void renderName(Entity entity, float x, float y, DrawContext context) {
         MatrixStack matrixStack = context.getMatrices();
         Font font = Fonts.SF_MEDIUM;
+        Font iconFont = Fonts.WOQUED;
 
         String name = entity.getName().getString();
         Text prefix = null;
+        String healthText = null;
 
         if (entity instanceof PlayerEntity player) {
             prefix = player.getScoreboardTeam() != null ? player.getScoreboardTeam().getPrefix() : null;
+            float health;
+            float maxHealth = player.getMaxHealth();
+
+            if (HealthResolverModule.getInstance().isEnabled()) {
+                health = player.getHealth();
+            } else {
+                health = player.getHealth();
+            }
+
+            healthText = Math.round(health) + "/" + Math.round(maxHealth);
         }
 
         float scale = module.scale.getValue();
         float size = 8f * scale;
+        float iconSize = 8f * scale;
         float gap = 2f * scale;
         float nameWidth = font.getWidth(name, size);
         float prefixWidth = font.getWidth(prefix, size);
 
         boolean hasPrefix = prefixWidth > 0.5 && prefix != null;
+        boolean hasHealth = healthText != null;
 
         float spaceWidth = !hasPrefix ? 0 : font.getWidth(" ", size);
-        float textWidth = prefixWidth + spaceWidth + nameWidth;
+        float healthIconWidth = hasHealth ? iconFont.getWidth("d", iconSize) : 0;
+        float healthTextWidth = hasHealth ? font.getWidth(healthText, size) : 0;
+
+        float textWidth = prefixWidth + spaceWidth + nameWidth + (hasHealth ? gap + healthIconWidth + gap + healthTextWidth : 0);
 
         x -= textWidth / 2f + gap;
 
@@ -152,6 +170,13 @@ public void onRender3D(Render3DEvent.Render3DEventData event) {
         }
 
         font.drawText(matrixStack, name, textX, textY, size, module.textColor.getValue());
+
+        if (hasHealth) {
+            textX += nameWidth + gap;
+            iconFont.drawText(matrixStack, "d", textX, textY, iconSize, module.textColor.getValue());
+            textX += healthIconWidth + gap;
+            font.drawText(matrixStack, healthText, textX, textY, size, module.textColor.getValue());
+        }
     }
 
 private void render3DBox(Entity entity, double x, double y, double z) {
