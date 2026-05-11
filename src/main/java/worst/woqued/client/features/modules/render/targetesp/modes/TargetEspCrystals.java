@@ -10,7 +10,9 @@ import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import worst.woqued.api.event.events.render.Render3DEvent;
+import worst.woqued.api.utils.color.ColorUtil;
 import worst.woqued.api.utils.color.UIColors;
+import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.client.features.modules.render.targetesp.TargetEspMode;
 
 import java.util.ArrayList;

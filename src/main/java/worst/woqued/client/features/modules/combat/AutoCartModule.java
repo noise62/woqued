@@ -117,7 +117,7 @@ public class AutoCartModule extends Module {
 
     private void calculateTargetRotation() {
         Vec3d playerPos = mc.player.getPos().add(0, mc.player.getEyeHeight(mc.player.getPose()), 0);
-        Vec3d blockPos = Vec3d.ofCenter(targetHit.getBlockPos()).add(0, 0.5, 0);
+        Vec3d blockPos = Vec3d.ofCenter(targetHit.getBlockPos()).add(0, 0.7, 0);
 
         double deltaX = blockPos.x - playerPos.x;
         double deltaY = blockPos.y - playerPos.y;

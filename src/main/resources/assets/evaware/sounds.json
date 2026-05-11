@@ -68,5 +68,20 @@
     "sounds": [
       "evaware:navalny"
     ]
+  },
+  "otkazano": {
+    "sounds": [
+      "evaware:otkazano"
+    ]
+  },
+  "awp": {
+    "sounds": [
+      "evaware:awp"
+    ]
+  },
+  "photo": {
+    "sounds": [
+      "evaware:photo"
+    ]
   }
 }

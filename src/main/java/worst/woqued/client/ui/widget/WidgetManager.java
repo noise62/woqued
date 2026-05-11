@@ -1,6 +1,7 @@
 package worst.woqued.client.ui.widget;
 
 import lombok.Getter;
+import net.minecraft.block.MushroomBlock;
 import worst.woqued.api.event.Listener;
 import worst.woqued.api.event.events.render.Render2DEvent;
 import worst.woqued.client.features.modules.render.InterfaceModule;

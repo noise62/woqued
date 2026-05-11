@@ -7,17 +7,47 @@ import worst.woqued.api.module.ModuleRegister;
 import worst.woqued.api.module.setting.BooleanSetting;
 import worst.woqued.api.module.setting.SliderSetting;
 import worst.woqued.api.module.setting.MultiBooleanSetting;
+import worst.woqued.api.module.setting.ModeSetting;
 import worst.woqued.api.module.setting.RunSetting;
 import worst.woqued.api.utils.render.KawaseBlurProgram;
 import worst.woqued.client.services.RenderService;
 import worst.woqued.client.ui.theme.ThemeEditor;
 import worst.woqued.client.ui.widget.WidgetManager;
+import worst.woqued.client.ui.widget.overlay.TargetInfoWidget;
 
 @ModuleRegister(name = "Interface", category = Category.RENDER)
 public class InterfaceModule extends Module {
     @Getter private static final InterfaceModule instance = new InterfaceModule();
 
     public final MultiBooleanSetting widgets = new MultiBooleanSetting("Widgets");
+    private ModeSetting targetInfoMode;
+    private TargetInfoWidget targetInfoWidget;
+
+    private ModeSetting createTargetInfoMode() {
+        targetInfoWidget = (TargetInfoWidget) WidgetManager.getInstance().getWidgets().stream()
+                .filter(w -> w instanceof TargetInfoWidget)
+                .findFirst().orElse(null);
+
+        return new ModeSetting("Target info mode").values(TargetInfoWidget.RenderMode.values())
+                .value(TargetInfoWidget.RenderMode.BASIC)
+                .setVisible(() -> {
+                    if (widgets.getValue().isEmpty()) return false;
+                    BooleanSetting targetInfoSetting = widgets.getValue().stream()
+                            .filter(s -> s.getName().equals("Target info"))
+                            .findFirst().orElse(null);
+                    return targetInfoSetting != null && targetInfoSetting.getValue();
+                })
+                .onAction(() -> {
+                    if (targetInfoWidget != null) {
+                        for (TargetInfoWidget.RenderMode mode : TargetInfoWidget.RenderMode.values()) {
+                            if (targetInfoMode.is(mode)) {
+                                targetInfoWidget.setRenderMode(mode);
+                                break;
+                            }
+                        }
+                    }
+                });
+    }
     private final RunSetting themes = new RunSetting("Theme editor").value(() -> {
         ThemeEditor.getInstance().setOpen(!ThemeEditor.getInstance().isOpen());
     });
@@ -40,7 +70,9 @@ public class InterfaceModule extends Module {
                 })
                 .toList());
 
-        addSettings(widgets, themes,
+        targetInfoMode = createTargetInfoMode();
+
+        addSettings(widgets, targetInfoMode, themes,
                 scale, glassy, passes, offset);
     }
 

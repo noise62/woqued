@@ -116,6 +116,7 @@ public class ModuleManager {
                 AirStuckModule.getInstance(),
                 CarrotFarmModule.getInstance(),
                 LineGlyphsModule.getInstance(),
+                HitSoundModule.getInstance(),
                 FlightModule.getInstance()
         );
 

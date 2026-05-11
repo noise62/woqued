@@ -31,7 +31,7 @@ public class CommandManager {
         register(
                 new CommandConfig(), new CommandFriend(), new CommandStaffs(),
                 new CommandMacro(), new CommandGps(),
-                new CommandSkin(), new CommandBind()
+                new CommandSkin(), new CommandBind(), new CommandFakePlayer()
         );
     }
 

@@ -6,28 +6,50 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import worst.woqued.api.event.events.render.Render2DEvent;
 import worst.woqued.api.utils.animation.AnimationUtil;
 import worst.woqued.api.utils.animation.Easing;
 import worst.woqued.api.utils.color.ColorUtil;
 import worst.woqued.api.utils.color.UIColors;
 import worst.woqued.api.utils.math.MathUtil;
+import worst.woqued.api.utils.math.ProjectionUtil;
 import worst.woqued.api.utils.render.RenderUtil;
 import worst.woqued.api.utils.render.ScissorUtil;
 import worst.woqued.api.utils.render.fonts.Font;
 import worst.woqued.api.utils.render.fonts.Fonts;
 import worst.woqued.client.features.modules.combat.AuraModule;
 import worst.woqued.client.features.modules.combat.AimAssistModule;
+import worst.woqued.api.module.setting.ModeSetting;
 import worst.woqued.client.ui.widget.Widget;
+import org.joml.Vector2f;
 
 import java.awt.*;
 
 public class TargetInfoWidget extends Widget {
 
+    public enum RenderMode implements ModeSetting.NamedChoice {
+        BASIC("Basic"),
+        ANIMATED("Animated");
+
+        private final String name;
+
+        RenderMode(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+    }
+
     private final AnimationUtil showAnimation = new AnimationUtil();
     private float healthAnimation = 0f;
     private float interpolatedHealth = 0f;
     private LivingEntity target;
+    private RenderMode renderMode = RenderMode.BASIC;
+    private float animatedX, animatedY;
 
     public TargetInfoWidget() {
         super(30f, 30f);
@@ -71,8 +93,24 @@ public class TargetInfoWidget extends Widget {
         float anim = (float) showAnimation.getValue();
         int fullAlpha = (int) (anim * 255f);
 
-        float x = getDraggable().getX();
-        float y = getDraggable().getY();
+        float x, y;
+        if (renderMode == RenderMode.ANIMATED && target != null) {
+            Vec3d targetPos = target.getPos().add(0, target.getHeight() + 0.3, 0);
+            Vector2f screenPos = ProjectionUtil.project(targetPos);
+            if (screenPos.x != Float.MAX_VALUE) {
+                float targetWidth = scaled(100f);
+                float targetHeight = scaled(34f);
+                animatedX = MathHelper.lerp(0.15f, animatedX, screenPos.x - targetWidth / 2f);
+                animatedY = MathHelper.lerp(0.15f, animatedY, screenPos.y - targetHeight);
+            }
+            x = animatedX;
+            y = animatedY;
+        } else {
+            x = getDraggable().getX();
+            y = getDraggable().getY();
+            animatedX = x;
+            animatedY = y;
+        }
 
         float width = scaled(100f);
         float height = scaled(34f);
@@ -146,6 +184,19 @@ public class TargetInfoWidget extends Widget {
 
         getDraggable().setWidth(width);
         getDraggable().setHeight(height);
+
+        if (renderMode == RenderMode.ANIMATED && target != null) {
+            getDraggable().setX(x);
+            getDraggable().setY(y);
+        }
+    }
+
+    public RenderMode getRenderMode() {
+        return renderMode;
+    }
+
+    public void setRenderMode(RenderMode mode) {
+        this.renderMode = mode;
     }
 
     private void update() {

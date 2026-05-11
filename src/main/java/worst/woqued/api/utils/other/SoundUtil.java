@@ -55,6 +55,16 @@ public class SoundUtil implements QuickImports {
     private final Identifier NAVALNY_SOUND = Identifier.of(path() + "navalny");
     public SoundEvent NAVALNY_EVENT = SoundEvent.of(NAVALNY_SOUND);
 
+    // hit sounds
+    private final Identifier OTKAZANO_SOUND = Identifier.of(path() + "otkazano");
+    public SoundEvent OTKAZANO_EVENT = SoundEvent.of(OTKAZANO_SOUND);
+
+    private final Identifier AWP_SOUND = Identifier.of(path() + "awp");
+    public SoundEvent AWP_EVENT = SoundEvent.of(AWP_SOUND);
+
+    private final Identifier PHOTO_SOUND = Identifier.of(path() + "photo");
+    public SoundEvent PHOTO_EVENT = SoundEvent.of(PHOTO_SOUND);
+
     public void load() {
         Registry.register(Registries.SOUND_EVENT, ENABLE_SMOOTH_SOUND, ENABLE_SMOOTH_EVENT);
         Registry.register(Registries.SOUND_EVENT, DISABLE_SMOOTH_SOUND, DISABLE_SMOOTH_EVENT);
@@ -77,11 +87,20 @@ public class SoundUtil implements QuickImports {
         Registry.register(Registries.SOUND_EVENT, MELL_SOUND, MELL_EVENT);
 
         Registry.register(Registries.SOUND_EVENT, NAVALNY_SOUND, NAVALNY_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, OTKAZANO_SOUND, OTKAZANO_EVENT);
+        Registry.register(Registries.SOUND_EVENT, AWP_SOUND, AWP_EVENT);
+        Registry.register(Registries.SOUND_EVENT, PHOTO_SOUND, PHOTO_EVENT);
     }
 
     public void playSound(SoundEvent sound) {
         if (mc.player != null && mc.world != null && mc.getCameraEntity() != null)
             mc.world.playSound(mc.player, mc.getCameraEntity().getBlockPos(), sound, SoundCategory.BLOCKS, ToggleSoundsModule.getInstance().volume.getValue() / 100f, 1f);
+    }
+
+    public void playSound(SoundEvent sound, float volume) {
+        if (mc.player != null && mc.world != null && mc.getCameraEntity() != null)
+            mc.world.playSound(mc.player, mc.getCameraEntity().getBlockPos(), sound, SoundCategory.BLOCKS, volume, 1f);
     }
 
     public void stopSounds() {

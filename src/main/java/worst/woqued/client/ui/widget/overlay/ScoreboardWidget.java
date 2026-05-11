@@ -45,12 +45,12 @@ public class ScoreboardWidget extends Widget {
         float x = getDraggable().getX();
         float y = getDraggable().getY();
 
-        float titleSize = scaled(8f);
-        float lineSize  = scaled(7f);
-        float padX      = scaled(8f);
-        float padY      = scaled(5f);
-        float lineGap   = scaled(4f);
-        float valueGap  = scaled(10f);
+        float titleSize = scaled(6f);
+        float lineSize  = scaled(5f);
+        float padX      = scaled(6f);
+        float padY      = scaled(3f);
+        float lineGap   = scaled(3f);
+        float valueGap  = scaled(8f);
         float round     = scaled(5f);
 
         List<ScoreboardEntry> entries = mc.world.getScoreboard()
