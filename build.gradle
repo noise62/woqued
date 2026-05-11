@@ -78,7 +78,8 @@ dependencies {
     // Важно: имя должно совпадать с названием файла IAS-Fabric-1.21.4-9.0.4.jar без расширения
     modImplementation include(name: 'IAS-Fabric-1.21.4-9.0.4')
 
-    
+    // Встраивание Sodium
+    modImplementation include(name: 'sodium-fabric-0.6.13-mc1.21.4')
 
     // --------------------------------------
 
