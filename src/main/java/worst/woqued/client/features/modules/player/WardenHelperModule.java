@@ -6,11 +6,9 @@ import lombok.Getter;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.TrappedChestBlockEntity;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.util.math.MatrixStack.Entry;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -41,8 +39,6 @@ public class WardenHelperModule extends Module {
     @Getter private static final WardenHelperModule instance = new WardenHelperModule();
 
     private final BooleanSetting showESP = new BooleanSetting("ESP").value(true);
-    private final BooleanSetting showLines = new BooleanSetting("Линии до сундуков").value(true);
-    private final BooleanSetting showDistance = new BooleanSetting("Дистанция").value(true);
     private final BindSetting resetBind = new BindSetting("Ресет сундуков");
 
     private final Map<BlockPos, ChestData> chestDataMap = new ConcurrentHashMap<>();
@@ -60,13 +56,12 @@ public class WardenHelperModule extends Module {
     private static final Color COLOR_DEFAULT = new Color(255, 60, 60, 200);
     private static final Color COLOR_WARN = new Color(255, 220, 50, 200);
     private static final Color COLOR_READY = new Color(60, 255, 60, 200);
-    private static final Color LINE_COLOR = new Color(255, 255, 255, 150);
 
     private static final Pattern TIME_PATTERN = Pattern.compile("(\\d{1,2}):(\\d{2})(?::(\\d{2}))?");
     private static final Pattern SECONDS_PATTERN = Pattern.compile("(\\d+)\\s*(с|s|сек|sec)");
 
     public WardenHelperModule() {
-        addSettings(showESP, showLines, showDistance, resetBind);
+        addSettings(showESP, resetBind);
     }
 
     @Override
@@ -111,7 +106,6 @@ public class WardenHelperModule extends Module {
             MatrixStack matrices = event.matrixStack();
             Camera camera = mc.gameRenderer.getCamera();
             Vec3d cam = camera.getPos();
-            Vec3d eyePos = mc.player.getEyePos();
 
             // Рендер ESP боксов
             if (showESP.getValue()) {
@@ -145,89 +139,6 @@ public class WardenHelperModule extends Module {
                     RenderSystem.disableBlend();
                 } catch (IllegalStateException e) {
                     // Игнорируем ошибки пустого буфера
-                }
-            }
-
-            // Рендер линий от глаз до сундуков
-            if (showLines.getValue()) {
-                try {
-                    RenderSystem.enableBlend();
-                    RenderSystem.disableDepthTest();
-                    RenderSystem.disableCull();
-                    RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
-                    RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-
-                    BufferBuilder linesBuffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-                    var matrix = matrices.peek().getPositionMatrix();
-                    float r = LINE_COLOR.getRed() / 255f;
-                    float g = LINE_COLOR.getGreen() / 255f;
-                    float b = LINE_COLOR.getBlue() / 255f;
-                    float a = LINE_COLOR.getAlpha() / 255f;
-
-                    for (ChestRenderData chest : cachedChestsToRender) {
-                        Vec3d chestCenter = chest.box.getCenter();
-                        
-                        // Линия от глаз до центра сундука
-                        linesBuffer.vertex(matrix, (float)(eyePos.x - cam.x), (float)(eyePos.y - cam.y), (float)(eyePos.z - cam.z)).color(r, g, b, a);
-                        linesBuffer.vertex(matrix, (float)(chestCenter.x - cam.x), (float)(chestCenter.y - cam.y), (float)(chestCenter.z - cam.z)).color(r, g, b, a);
-                    }
-
-                    BufferRenderer.drawWithGlobalProgram(linesBuffer.end());
-
-                    RenderSystem.defaultBlendFunc();
-                    RenderSystem.enableCull();
-                    RenderSystem.enableDepthTest();
-                    RenderSystem.disableBlend();
-                } catch (IllegalStateException e) {
-                    // Игнорируем ошибки пустого буфера
-                }
-            }
-
-            // Рендер дистанции над сундуками
-            if (showDistance.getValue()) {
-                TextRenderer textRenderer = mc.textRenderer;
-                VertexConsumerProvider.Immediate vertexConsumers = mc.getBufferBuilders().getEntityVertexConsumers();
-                
-                for (ChestRenderData chest : cachedChestsToRender) {
-                    Vec3d chestCenter = chest.box.getCenter();
-                    double distance = mc.player.getEyePos().distanceTo(chestCenter);
-                    
-                    // Получаем 2D координаты из 3D позиции
-                    Vec3d textPos = new Vec3d(chestCenter.x, chestCenter.y + 1.2, chestCenter.z);
-                    Vec3d projected = textPos.subtract(cam);
-                    
-                    // Проверяем, что сундук перед камерой
-                    if (projected.z > 0) {
-                        // Преобразуем в экранные координаты
-                        double screenX = (projected.x / projected.z) * (mc.getWindow().getFramebufferWidth() / (2.0 * Math.tan(Math.toRadians(mc.gameRenderer.getFov(mc.gameRenderer.getCamera(), 1.0f, false))))) + mc.getWindow().getFramebufferWidth() / 2.0;
-                        double screenY = mc.getWindow().getFramebufferHeight() / 2.0 - (projected.y / projected.z) * (mc.getWindow().getFramebufferHeight() / (2.0 * Math.tan(Math.toRadians(mc.gameRenderer.getFov(mc.gameRenderer.getCamera(), 1.0f, false)))));
-                        
-                        // Корректируем под обычный размер окна
-                        screenX = screenX * mc.getWindow().getWidth() / mc.getWindow().getFramebufferWidth();
-                        screenY = screenY * mc.getWindow().getHeight() / mc.getWindow().getFramebufferHeight();
-                        
-                        // Проверяем, что текст на экране
-                        if (screenX > -100 && screenX < mc.getWindow().getWidth() + 100 && screenY > -100 && screenY < mc.getWindow().getHeight() + 100) {
-                            String distanceText = String.format("%.1fm", distance);
-                            int textWidth = textRenderer.getWidth(distanceText);
-                            
-                            matrices.push();
-                            Entry matrixEntry = matrices.peek();
-                            // Рендерим текст
-                            textRenderer.draw(distanceText, 
-                                (float)(screenX - textWidth / 2.0), 
-                                (float)(screenY - textRenderer.fontHeight), 
-                                0xFFFFFF, 
-                                false, 
-                                matrixEntry.getPositionMatrix(), 
-                                vertexConsumers, 
-                                TextRenderer.TextLayerType.NORMAL, 
-                                0, 
-                                15728880);
-                            vertexConsumers.draw();
-                            matrices.pop();
-                        }
-                    }
                 }
             }
         }));

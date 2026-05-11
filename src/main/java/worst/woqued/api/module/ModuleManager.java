@@ -115,6 +115,7 @@ public class ModuleManager {
                 NavalnyModule.getInstance(),
                 AirStuckModule.getInstance(),
                 CarrotFarmModule.getInstance(),
+                LineGlyphsModule.getInstance(),
                 FlightModule.getInstance()
         );
 

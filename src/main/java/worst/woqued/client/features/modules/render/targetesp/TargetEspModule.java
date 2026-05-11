@@ -15,6 +15,7 @@ import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspCome
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspCrystals;
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspTexture;
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspChains;
+import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspCircle;
 
 @ModuleRegister(name = "Target Esp", category = Category.RENDER)
 public class TargetEspModule extends Module {
@@ -24,16 +25,18 @@ public class TargetEspModule extends Module {
     private final TargetEspTexture espTexture = new TargetEspTexture();
     private final TargetEspCrystals espCrystals = new TargetEspCrystals();
     private final TargetEspChains espChains = new TargetEspChains();
+    private final TargetEspCircle espCircle = new TargetEspCircle();
 
     private TargetEspMode currentMode = espTexture;
 
     @Getter private final ModeSetting mode = new ModeSetting("Mode").value("Marker").values(
-            "Marker", "Comets", "Crystals", "Chains"
+            "Marker", "Comets", "Crystals", "Chains", "Circle"
     ).onAction(() -> {
         currentMode = switch (getMode().getValue()) {
             case "Comets" -> espComets;
             case "Crystals" -> espCrystals;
             case "Chains" -> espChains;
+            case "Circle" -> espCircle;
             default -> espTexture;
         };
     });
