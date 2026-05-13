@@ -69,6 +69,9 @@ dependencies {
     // discord
     libImplementation "com.github.donyka:discord-rpc:${project.drpc_version}"
 
+    // kotlin for MediaPlayerInfo
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
+
     // --- ВСТРАИВАЕМЫЕ МОДЫ (Jar-in-Jar) ---
 
     // Встраивание Satin
@@ -80,6 +83,9 @@ dependencies {
 
     // Встраивание Sodium
     modImplementation include(name: 'sodium-fabric-0.6.13-mc1.21.4')
+
+    // Встраивание MediaPlayerInfo
+    modImplementation include(name: 'MediaPlayerInfo-0.1.0')
 
     // --------------------------------------
 
@@ -110,9 +116,13 @@ java {
 jar {
     inputs.property "archivesName", project.base.archivesName
 
-    // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc) и вшивает их классы внутрь твоего мода
+    // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc, kotlin) и вшивает их классы внутрь твоего мода
     from {
         configurations.libImplementation.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    from {
+        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 
     duplicatesStrategy(DuplicatesStrategy.EXCLUDE)

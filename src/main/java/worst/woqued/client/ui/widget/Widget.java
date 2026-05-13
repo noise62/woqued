@@ -31,6 +31,11 @@ public abstract class Widget implements QuickImports, IRenderer {
         return DraggableManager.getInstance().create(InterfaceModule.getInstance(), name, x, y);
     }
 
+    protected void setDraggableSize(int width, int height) {
+        this.draggable.setWidth(width);
+        this.draggable.setHeight(height);
+    }
+
     public void render(Render2DEvent.Render2DEventData event) {
         render(event.matrixStack());
     }
