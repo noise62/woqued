@@ -15,6 +15,7 @@ import worst.woqued.api.utils.rotation.manager.RotationManager;
 import worst.woqued.api.utils.rotation.manager.RotationStrategy;
 import worst.woqued.api.utils.task.TaskPriority;
 import worst.woqued.client.features.modules.combat.AuraModule;
+import worst.woqued.client.features.modules.movement.speed.SpeedModule;
 
 @ModuleRegister(name = "TargetStrafe", category = Category.MOVEMENT, bind = -999)
 public class TargetStrafeModule extends Module {
@@ -61,6 +62,10 @@ public class TargetStrafeModule extends Module {
         return !mc.player.getAbilities().flying;
     }
 
+    private boolean isSpeedEnabled() {
+        return SpeedModule.getInstance().isEnabled();
+    }
+
     private void onTick() {
         if (!canStrafe()) return;
 
@@ -87,11 +92,13 @@ public class TargetStrafeModule extends Module {
 
                     double finalSpeed = aggressive.getValue() ? moveSpeed * 1.2 : moveSpeed;
 
-                    mc.player.setVelocity(
-                            normalizedX * finalSpeed * 0.3,
-                            mc.player.getVelocity().y,
-                            normalizedZ * finalSpeed * 0.3
-                    );
+                    if (!isSpeedEnabled()) {
+                        mc.player.setVelocity(
+                                normalizedX * finalSpeed * 0.3,
+                                mc.player.getVelocity().y,
+                                normalizedZ * finalSpeed * 0.3
+                        );
+                    }
 
                     mc.player.input.movementForward = 1.0f;
                     mc.player.input.movementSideways = 0.0f;
@@ -127,11 +134,13 @@ public class TargetStrafeModule extends Module {
                     double normalizedZ = deltaZ / strafeDistance;
                     double strafeSpeed = moveSpeed * 0.8;
 
-                    mc.player.setVelocity(
-                            normalizedX * strafeSpeed * 0.25,
-                            mc.player.getVelocity().y,
-                            normalizedZ * strafeSpeed * 0.25
-                    );
+                    if (!isSpeedEnabled()) {
+                        mc.player.setVelocity(
+                                normalizedX * strafeSpeed * 0.25,
+                                mc.player.getVelocity().y,
+                                normalizedZ * strafeSpeed * 0.25
+                        );
+                    }
 
                     mc.player.input.movementForward = 0.8f;
                     mc.player.input.movementSideways = switchDir ? 0.6f : -0.6f;

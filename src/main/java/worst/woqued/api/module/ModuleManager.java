@@ -117,6 +117,8 @@ public class ModuleManager {
                 CarrotFarmModule.getInstance(),
                 LineGlyphsModule.getInstance(),
                 HitSoundModule.getInstance(),
+                TPInflModule.getInstance(),
+                KillSoundModule.getInstance(),
                 FlightModule.getInstance()
         );
 

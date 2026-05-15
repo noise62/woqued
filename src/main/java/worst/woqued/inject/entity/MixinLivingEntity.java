@@ -65,7 +65,7 @@ public abstract class MixinLivingEntity extends MixinEntity {
         return rotation.getYaw();
     }
 
-    @ModifyExpressionValue(method = "calcGlidingVelocity", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;getPitch()F"))
+@ModifyExpressionValue(method = "calcGlidingVelocity", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;getPitch()F"))
     private float fixGlidingVelocity(float original) {
         if ((Object) this != SharedClass.player()) {
             return original;
@@ -81,7 +81,6 @@ public abstract class MixinLivingEntity extends MixinEntity {
 
         return rotation.getPitch();
     }
-
 
     @ModifyExpressionValue(method = "calcGlidingVelocity", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;getRotationVector()Lnet/minecraft/util/math/Vec3d;"))
     private Vec3d fixGlidingVelocityVector(Vec3d original) {
