@@ -114,6 +114,7 @@ java {
 }
 
 jar {
+    zip64 = true
     inputs.property "archivesName", project.base.archivesName
 
     // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc, kotlin) и вшивает их классы внутрь твоего мода
