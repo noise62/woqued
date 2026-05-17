@@ -118,14 +118,15 @@ jar {
     // Этот блок берет обычные Java-библиотеки (catboost, discord-rpc, kotlin) и вшивает их классы внутрь твоего мода
     from {
         configurations.libImplementation.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.kotlin_module'
     }
 
     from {
         configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.kotlin_module'
     }
-
-    // Исключаем файлы подписей из META-INF, чтобы избежать SecurityException
-    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF', 'META-INF/*.kotlin_module'
 
     duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 
