@@ -84,8 +84,6 @@ dependencies {
     // Встраивание Sodium
     modImplementation include(name: 'sodium-fabric-0.6.13-mc1.21.4')
 
-    // Встраивание MediaPlayerInfo
-    modImplementation include(name: 'MediaPlayerInfo-0.1.0')
 
     // --------------------------------------
 
