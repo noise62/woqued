@@ -124,6 +124,9 @@ jar {
         configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 
+    // Исключаем файлы подписей из META-INF, чтобы избежать SecurityException
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF', 'META-INF/*.kotlin_module'
+
     duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 
     from("LICENSE") {
