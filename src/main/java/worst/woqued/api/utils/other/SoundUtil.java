@@ -1,0 +1,126 @@
+package worst.woqued.api.utils.other;
+
+import lombok.experimental.UtilityClass;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.util.Identifier;
+import worst.woqued.api.system.interfaces.QuickImports;
+import worst.woqued.client.features.modules.other.ToggleSoundsModule;
+
+@UtilityClass
+public class SoundUtil implements QuickImports {
+    // smooth toggle sound
+    private final Identifier ENABLE_SMOOTH_SOUND = Identifier.of(path() + "smooth_on");
+    public SoundEvent ENABLE_SMOOTH_EVENT = SoundEvent.of(ENABLE_SMOOTH_SOUND);
+    private final Identifier DISABLE_SMOOTH_SOUND = Identifier.of(path() + "smooth_off");
+    public SoundEvent DISABLE_SMOOTH_EVENT = SoundEvent.of(DISABLE_SMOOTH_SOUND);
+
+    // cel toggle sound
+    private final Identifier ENABLE_CEL_SOUND = Identifier.of(path() + "celestial_on");
+    public SoundEvent ENABLE_CEL_EVENT = SoundEvent.of(ENABLE_CEL_SOUND);
+    private final Identifier DISABLE_CEL_SOUND = Identifier.of(path() + "celestial_off");
+    public SoundEvent DISABLE_CEL_EVENT = SoundEvent.of(DISABLE_CEL_SOUND);
+
+    // nur toggle sound
+    private final Identifier ENABLE_NU_SOUND = Identifier.of(path() + "nursultan_on");
+    public SoundEvent ENABLE_NU_EVENT = SoundEvent.of(ENABLE_NU_SOUND);
+    private final Identifier DISABLE_NU_SOUND = Identifier.of(path() + "nursultan_off");
+    public SoundEvent DISABLE_NU_EVENT = SoundEvent.of(DISABLE_NU_SOUND);
+
+    // akrien toggle sound
+    private final Identifier ENABLE_AK_SOUND = Identifier.of(path() + "akrien_on");
+    public SoundEvent ENABLE_AK_EVENT = SoundEvent.of(ENABLE_AK_SOUND);
+    private final Identifier DISABLE_AK_SOUND = Identifier.of(path() + "akrien_off");
+    public SoundEvent DISABLE_AK_EVENT = SoundEvent.of(DISABLE_AK_SOUND);
+
+    // tech toggle sound
+    private final Identifier ENABLE_TECH_SOUND = Identifier.of(path() + "tech_on");
+    public SoundEvent ENABLE_TECH_EVENT = SoundEvent.of(ENABLE_TECH_SOUND);
+    private final Identifier DISABLE_TECH_SOUND = Identifier.of(path() + "tech_off");
+    public SoundEvent DISABLE_TECH_EVENT = SoundEvent.of(DISABLE_TECH_SOUND);
+
+    // blop toggle sound
+    private final Identifier ENABLE_BLOP_SOUND = Identifier.of(path() + "blop_on");
+    public SoundEvent ENABLE_BLOP_EVENT = SoundEvent.of(ENABLE_BLOP_SOUND);
+    private final Identifier DISABLE_BLOP_SOUND = Identifier.of(path() + "blop_off");
+    public SoundEvent DISABLE_BLOP_EVENT = SoundEvent.of(DISABLE_BLOP_SOUND);
+
+    // mell sound
+    private final Identifier MELL_SOUND = Identifier.of(path() + "mell");
+    public SoundEvent MELL_EVENT = SoundEvent.of(MELL_SOUND);
+
+    // navalny sound
+    private final Identifier NAVALNY_SOUND = Identifier.of(path() + "navalny");
+    public SoundEvent NAVALNY_EVENT = SoundEvent.of(NAVALNY_SOUND);
+
+    // hit sounds
+    private final Identifier OTKAZANO_SOUND = Identifier.of(path() + "otkazano");
+    public SoundEvent OTKAZANO_EVENT = SoundEvent.of(OTKAZANO_SOUND);
+
+    private final Identifier AWP_SOUND = Identifier.of(path() + "awp");
+    public SoundEvent AWP_EVENT = SoundEvent.of(AWP_SOUND);
+
+    private final Identifier PHOTO_SOUND = Identifier.of(path() + "photo");
+    public SoundEvent PHOTO_EVENT = SoundEvent.of(PHOTO_SOUND);
+
+    private final Identifier AM_SOUND = Identifier.of(path() + "am");
+    public SoundEvent AM_EVENT = SoundEvent.of(AM_SOUND);
+
+    private final Identifier RUST_SOUND = Identifier.of(path() + "rust");
+    public SoundEvent RUST_EVENT = SoundEvent.of(RUST_SOUND);
+
+    private final Identifier CS_SOUND = Identifier.of(path() + "cs");
+    public SoundEvent CS_EVENT = SoundEvent.of(CS_SOUND);
+
+    public void load() {
+        Registry.register(Registries.SOUND_EVENT, ENABLE_SMOOTH_SOUND, ENABLE_SMOOTH_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_SMOOTH_SOUND, DISABLE_SMOOTH_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, ENABLE_CEL_SOUND, ENABLE_CEL_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_CEL_SOUND, DISABLE_CEL_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, ENABLE_NU_SOUND, ENABLE_NU_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_NU_SOUND, DISABLE_NU_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, ENABLE_AK_SOUND, ENABLE_AK_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_AK_SOUND, DISABLE_AK_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, ENABLE_TECH_SOUND, ENABLE_TECH_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_TECH_SOUND, DISABLE_TECH_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, ENABLE_BLOP_SOUND, ENABLE_BLOP_EVENT);
+        Registry.register(Registries.SOUND_EVENT, DISABLE_BLOP_SOUND, DISABLE_BLOP_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, MELL_SOUND, MELL_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, NAVALNY_SOUND, NAVALNY_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, OTKAZANO_SOUND, OTKAZANO_EVENT);
+        Registry.register(Registries.SOUND_EVENT, AWP_SOUND, AWP_EVENT);
+        Registry.register(Registries.SOUND_EVENT, PHOTO_SOUND, PHOTO_EVENT);
+
+        Registry.register(Registries.SOUND_EVENT, AM_SOUND, AM_EVENT);
+        Registry.register(Registries.SOUND_EVENT, RUST_SOUND, RUST_EVENT);
+        Registry.register(Registries.SOUND_EVENT, CS_SOUND, CS_EVENT);
+    }
+
+    public void playSound(SoundEvent sound) {
+        if (mc.player != null && mc.world != null && mc.getCameraEntity() != null)
+            mc.world.playSound(mc.player, mc.getCameraEntity().getBlockPos(), sound, SoundCategory.BLOCKS, ToggleSoundsModule.getInstance().volume.getValue() / 100f, 1f);
+    }
+
+    public void playSound(SoundEvent sound, float volume) {
+        if (mc.player != null && mc.world != null && mc.getCameraEntity() != null)
+            mc.world.playSound(mc.player, mc.getCameraEntity().getBlockPos(), sound, SoundCategory.BLOCKS, volume, 1f);
+    }
+
+    public void stopSounds() {
+        mc.getSoundManager().stopAll();
+    }
+
+    private String path() {
+        return "evaware:";
+    }
+}
