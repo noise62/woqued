@@ -8,6 +8,8 @@ import net.minecraft.util.math.Vec3d;
 import worst.woqued.api.system.interfaces.QuickImports;
 import worst.woqued.api.utils.math.TimerUtil;
 import worst.woqued.api.utils.rotation.RotationUtil;
+import worst.woqued.client.features.modules.combat.AuraModule;
+import worst.woqued.api.utils.rotation.rotations.SpookyTimeRotation;
 
 @UtilityClass
 public class AuraUtil implements QuickImports {
@@ -17,11 +19,13 @@ public class AuraUtil implements QuickImports {
     public void onAttack(String mode) {
         switch (mode) {
             case "Grim" -> {
-                // Grim doesn't need special attack handling
             }
 
             case "Sloth" -> {
-                // Sloth handles attack in AuraModule directly
+            }
+
+            case "Spooky Time" -> {
+                // SpookyTimeRotation doesn't require onAttack handling
             }
 
             default -> {

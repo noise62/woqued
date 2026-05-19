@@ -17,6 +17,8 @@ import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspText
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspChains;
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspCircle;
 import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspTubik;
+import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspPentagram;
+import worst.woqued.client.features.modules.render.targetesp.modes.TargetEspSwords;
 
 @ModuleRegister(name = "Target Esp", category = Category.RENDER)
 public class TargetEspModule extends Module {
@@ -28,11 +30,13 @@ public class TargetEspModule extends Module {
     private final TargetEspCrystals espCrystals = new TargetEspCrystals();
     private final TargetEspChains espChains = new TargetEspChains();
     private final TargetEspCircle espCircle = new TargetEspCircle();
+    private final TargetEspPentagram espPentagram = new TargetEspPentagram();
+    private final TargetEspSwords espSwords = new TargetEspSwords();
 
     private TargetEspMode currentMode = espTexture;
 
     @Getter private final ModeSetting mode = new ModeSetting("Mode").value("Marker").values(
-            "Marker", "Tubik", "Comets", "Crystals", "Chains", "Circle"
+            "Marker", "Tubik", "Comets", "Crystals", "Chains", "Circle", "Pentagram", "Swords"
     ).onAction(() -> {
         currentMode = switch (getMode().getValue()) {
             case "Comets" -> espComets;
@@ -40,6 +44,8 @@ public class TargetEspModule extends Module {
             case "Crystals" -> espCrystals;
             case "Chains" -> espChains;
             case "Circle" -> espCircle;
+            case "Pentagram" -> espPentagram;
+            case "Swords" -> espSwords;
             default -> espTexture;
         };
     });
@@ -49,9 +55,17 @@ public class TargetEspModule extends Module {
     private final SliderSetting inSize = new SliderSetting("In size").value(0f).range(0f, 1f).step(0.1f).setVisible(() -> animation.is("In"));
     private final SliderSetting outSize = new SliderSetting("Out size").value(2f).range(1f, 2f).step(0.1f).setVisible(() -> animation.is("Out"));
     public final BooleanSetting lastPosition = new BooleanSetting("Last position").value(true);
+    public final SliderSetting circleSpeed = new SliderSetting("Circle Speed").value(2f).range(0.1f, 10f).step(0.1f);
+    public final SliderSetting circleSize = new SliderSetting("Circle Size").value(1f).range(0.1f, 3f).step(0.1f);
+    public final BooleanSetting circleBloom = new BooleanSetting("Circle Bloom").value(true);
+    public final SliderSetting circleBloomSize = new SliderSetting("Circle Bloom Size").value(1f).range(0.1f, 3f).step(0.1f);
+    public final BooleanSetting circleRedOnImpact = new BooleanSetting("Red On Impact").value(true);
+    public final SliderSetting circleImpactFadeIn = new SliderSetting("Impact Fade In").value(0.3f).range(0.01f, 1f).step(0.01f);
+    public final SliderSetting circleImpactFadeOut = new SliderSetting("Impact Fade Out").value(0.05f).range(0.01f, 1f).step(0.01f);
+    public final SliderSetting circleImpactIntensity = new SliderSetting("Impact Intensity").value(1f).range(0f, 1f).step(0.01f);
 
     public TargetEspModule() {
-        addSettings(mode, animation, duration, size, inSize, outSize, lastPosition);
+        addSettings(mode, animation, duration, size, inSize, outSize, lastPosition, circleSpeed, circleSize, circleBloom, circleBloomSize, circleRedOnImpact, circleImpactFadeIn, circleImpactFadeOut, circleImpactIntensity);
     }
 
     @Override

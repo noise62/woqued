@@ -10,15 +10,15 @@ import worst.woqued.api.utils.rotation.manager.RotationMode;
 
 import java.security.SecureRandom;
 
-public class SpookyDuelsRotation extends RotationMode {
+public class SpookyTimeRotation extends RotationMode {
     private final SecureRandom random = new SecureRandom();
     private long lastPointChange = 0;
     private Vec3d currentTarget = null;
     private int targetBodyPart = 0;
     private long lastBodyPartChange = 0;
 
-    public SpookyDuelsRotation() {
-        super("Spooky Duels");
+    public SpookyTimeRotation() {
+        super("Spooky Time");
     }
 
     @Override

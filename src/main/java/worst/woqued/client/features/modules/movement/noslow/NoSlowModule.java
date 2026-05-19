@@ -41,7 +41,6 @@ public class NoSlowModule extends Module {
     @Getter private final ModeSetting grimMode = new ModeSetting("Grim mode").value("Tick").values("Tick", "Old").setVisible(() -> mode.is("Grim")).onAction(() -> {
         noSlowGrim.bypassType = switch (getGrimMode().getValue()) {
             case "Tick" -> NoSlowGrim.BypassType.TICK;
-
             default -> NoSlowGrim.BypassType.OLD;
         };
     });

@@ -2,83 +2,196 @@ package worst.woqued.client.features.modules.other;
 
 import lombok.Getter;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
 import net.minecraft.item.ItemStack;
-import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.slot.Slot;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import worst.woqued.api.event.EventListener;
 import worst.woqued.api.event.Listener;
 import worst.woqued.api.event.events.player.other.UpdateEvent;
+import worst.woqued.api.event.events.render.Render2DEvent;
 import worst.woqued.api.module.Category;
 import worst.woqued.api.module.Module;
 import worst.woqued.api.module.ModuleRegister;
-import worst.woqued.api.module.setting.ModeSetting;
-import worst.woqued.api.module.setting.SliderSetting;
-import worst.woqued.api.utils.auction.ParseModeChoice;
-import worst.woqued.api.utils.auction.PriceParser;
+import worst.woqued.api.module.setting.BooleanSetting;
 import worst.woqued.api.utils.render.RenderUtil;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @ModuleRegister(name = "Auction Helper", category = Category.OTHER)
 public class AuctionHelperModule extends Module {
     @Getter private static final AuctionHelperModule instance = new AuctionHelperModule();
 
-    private final PriceParser priceParser = new PriceParser();
+    static final Pattern PRICE_PATTERN = Pattern.compile("Цен[аaAАыЫ]?:?\\s*([\\d,\\s\\.]+)", Pattern.CASE_INSENSITIVE);
 
-    @Getter private final ModeSetting mode = new ModeSetting("Mode")
-            .value(priceParser.currentMode)
-            .values(ParseModeChoice.values()).onAction(() -> {
-                priceParser.currentMode = switch (getMode().getValue()) {
-                    case "Spooky Time" -> ParseModeChoice.SPOOKY_TIME;
-                    case "Holy World" -> ParseModeChoice.HOLY_WORLD;
-                    case "Really World" -> ParseModeChoice.REALLY_WORLD;
-                    default -> ParseModeChoice.FUN_TIME;
-                };
-            });
-    private final SliderSetting slots = new SliderSetting("Slots").value(3f).range(1f, 6f).step(1f);
-    private final List<Slot> minPriceSlots = new ArrayList<>();
+    static final int CHEAPEST_COLOR = 0xFF4BFF4B;
+    static final int BEST_VALUE_COLOR = 0xFF33AAFF;
+
+    private final BooleanSetting onlyMending = new BooleanSetting("Only Mending").value(false);
+
+    private Slot cheapestSlot;
+    private Slot bestValueSlot;
+
+    private int lastUpdateTick = 0;
+    private int lastSlotCount = 0;
 
     public AuctionHelperModule() {
-        addSettings(mode, slots);
+        addSettings(onlyMending);
     }
 
     @Override
     public void onEvent() {
         EventListener updateEvent = UpdateEvent.getInstance().subscribe(new Listener<>(event -> {
-            handleUpdateEvent();
+            if (!(mc.currentScreen instanceof GenericContainerScreen screen)) {
+                cheapestSlot = null;
+                bestValueSlot = null;
+                return;
+            }
+
+            int currentSlotCount = screen.getScreenHandler().slots.size();
+
+            if (currentSlotCount != lastSlotCount || mc.player.age - lastUpdateTick > 5) {
+                lastUpdateTick = mc.player.age;
+                lastSlotCount = currentSlotCount;
+                updateBestSlots(screen);
+            }
         }));
 
-        addEvents(updateEvent);
+        EventListener render2DEvent = Render2DEvent.getInstance().subscribe(new Listener<>(event -> {
+            if (!(mc.currentScreen instanceof GenericContainerScreen screen)) return;
+
+            DrawContext context = event.context();
+
+            long time = System.currentTimeMillis();
+
+            if (cheapestSlot != null && isValidSlot(cheapestSlot, screen)) {
+                int color = getBlinkingColor(CHEAPEST_COLOR, time, 500);
+                highlightSlot(context, cheapestSlot, color);
+            }
+
+            if (bestValueSlot != null && isValidSlot(bestValueSlot, screen) && bestValueSlot != cheapestSlot) {
+                int color = getBlinkingColor(BEST_VALUE_COLOR, time, 600);
+                highlightSlot(context, bestValueSlot, color);
+            }
+        }));
+
+        addEvents(updateEvent, render2DEvent);
     }
 
-    public void handleUpdateEvent() {
-        if (!(mc.player.currentScreenHandler instanceof GenericContainerScreenHandler chest)) return;
-        String title = mc.currentScreen.getTitle().getString();
-
-        if (!title.contains("Аукцион") && !title.contains("Поиск") && !title.contains("Маркет") && !title.contains("ꈁꀀꈂꌲꈂꀁ") && !title.contains("[☃] Аукционы")) return;
-
-        minPriceSlots.clear();
-        minPriceSlots.addAll(getMinPriceSlots(chest));
+    private boolean isValidSlot(Slot slot, GenericContainerScreen screen) {
+        if (slot == null) return false;
+        if (slot.id < 0 || slot.id >= screen.getScreenHandler().slots.size()) return false;
+        Slot currentSlot = screen.getScreenHandler().getSlot(slot.id);
+        return currentSlot.hasStack() && !currentSlot.getStack().isEmpty();
     }
 
-    private List<Slot> getMinPriceSlots(GenericContainerScreenHandler chest) {
-        return chest.slots.stream()
-                .filter(s -> s.id <= 44 && !s.getStack().isEmpty() && getPrice(s.getStack()) != -1)
-                .sorted((s1, s2) -> Integer.compare(getPrice(s1.getStack()), getPrice(s2.getStack())))
-                .limit(slots.getValue().intValue())
-                .toList();
+    private void updateBestSlots(GenericContainerScreen screen) {
+        List<Slot> slots = screen.getScreenHandler().slots;
+        List<ItemPriceData> validItems = new ArrayList<>();
+
+        for (Slot slot : slots) {
+            if (slot.inventory == mc.player.getInventory()) continue;
+            ItemStack stack = slot.getStack();
+            if (stack.isEmpty()) continue;
+
+            if (onlyMending.getValue()) {
+                if (!hasMending(stack)) continue;
+            }
+
+            int totalPrice = parsePriceFromLore(stack);
+            if (totalPrice <= 0) continue;
+
+            int count = stack.getCount();
+            int pricePerItem = totalPrice / count;
+
+            validItems.add(new ItemPriceData(slot, totalPrice, pricePerItem, count));
+        }
+
+        if (validItems.isEmpty()) {
+            cheapestSlot = null;
+            bestValueSlot = null;
+            return;
+        }
+
+        cheapestSlot = validItems.stream()
+                .min(Comparator.comparingInt(d -> d.totalPrice))
+                .map(d -> d.slot)
+                .orElse(null);
+
+        bestValueSlot = validItems.stream()
+                .min(Comparator.comparingInt(d -> d.pricePerItem))
+                .map(d -> d.slot)
+                .orElse(null);
     }
 
-    private int getPrice(ItemStack stack) {
-        return priceParser.getPrice(stack);
+    private boolean hasMending(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+
+        var enchantments = stack.getEnchantments();
+        for (var entry : enchantments.getEnchantments()) {
+            if (entry.getKey().isPresent()) {
+                String enchantmentId = entry.getKey().get().getValue().toString();
+                if (enchantmentId.equals("minecraft:mending")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    public void onRenderChest(DrawContext context, Slot slot) {
-        if (minPriceSlots.contains(slot)) {
-            int alpha = (int)(1 + 110 * Math.abs(Math.sin(System.currentTimeMillis() * 0.005)));
-            RenderUtil.RECT.draw(context.getMatrices(), slot.x, slot.y, 16, 16, 0, new Color(0, 255, 0, alpha));
+    private int parsePriceFromLore(ItemStack stack) {
+        LoreComponent loreComp = stack.get(DataComponentTypes.LORE);
+        if (loreComp == null) return 0;
+
+        for (Text text : loreComp.lines()) {
+            String line = Formatting.strip(text.getString());
+            if (line == null) continue;
+            Matcher m = PRICE_PATTERN.matcher(line);
+            if (m.find()) {
+                try {
+                    String priceStr = m.group(1).replaceAll("[,\\s\\.]", "");
+                    return Integer.parseInt(priceStr);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return 0;
+    }
+
+    private int getBlinkingColor(int color, long time, int periodMs) {
+        float alpha = (float) (Math.sin((double) time / periodMs * Math.PI) * 0.3f + 0.7f);
+        float factor = Math.min(1f, Math.max(0.4f, alpha));
+        int a = (int) ((color >> 24 & 0xFF) * factor);
+        int r = (int) ((color >> 16 & 0xFF) * factor);
+        int g = (int) ((color >> 8 & 0xFF) * factor);
+        int b = (int) ((color & 0xFF) * factor);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private void highlightSlot(DrawContext context, Slot slot, int color) {
+        if (slot != null) {
+            RenderUtil.RECT.draw(context.getMatrices(), slot.x, slot.y, 16, 16, 0, new Color(color, true));
+        }
+    }
+
+    private static class ItemPriceData {
+        Slot slot;
+        int totalPrice;
+        int pricePerItem;
+        int count;
+
+        ItemPriceData(Slot slot, int totalPrice, int pricePerItem, int count) {
+            this.slot = slot;
+            this.totalPrice = totalPrice;
+            this.pricePerItem = pricePerItem;
+            this.count = count;
         }
     }
 }

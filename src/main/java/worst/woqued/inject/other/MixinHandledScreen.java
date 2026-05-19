@@ -22,7 +22,6 @@ import worst.woqued.api.event.events.other.ScreenEvent;
 import worst.woqued.api.system.backend.KeyStorage;
 import worst.woqued.api.system.backend.SharedClass;
 import worst.woqued.api.utils.math.TimerUtil;
-import worst.woqued.client.features.modules.other.AuctionHelperModule;
 import worst.woqued.client.features.modules.other.ItemScrollerModule;
 import worst.woqued.client.features.modules.other.MouseTweaksModule;
 
@@ -78,8 +77,6 @@ public abstract class MixinHandledScreen<T extends ScreenHandler> extends Screen
 
     @Inject(method = "drawSlot(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/screen/slot/Slot;)V", at = @At("TAIL"))
     protected void drawSlotHook(DrawContext context, Slot slot, CallbackInfo ci) {
-        AuctionHelperModule module = AuctionHelperModule.getInstance();
-        if (module.isEnabled()) module.onRenderChest(context, slot);
     }
 
     @Unique

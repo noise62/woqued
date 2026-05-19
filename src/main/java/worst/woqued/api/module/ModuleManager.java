@@ -119,6 +119,10 @@ public class ModuleManager {
                 HitSoundModule.getInstance(),
                 TPInflModule.getInstance(),
                 SkeletonESPModule.getInstance(),
+                WingsModule.getInstance(),
+                ChinaHatModule.getInstance(),
+                FreeCamModule.getInstance(),
+                BlockOverlayModule.getInstance(),
                 FlightModule.getInstance()
         );
 

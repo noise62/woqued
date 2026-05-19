@@ -7,6 +7,7 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.MovementType;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -50,12 +51,19 @@ public class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
         }
     }
 
+    @Unique
+    private float woqued$prevBodyYaw;
+    @Unique
+    private float woqued$targetBodyYaw;
+
     @ModifyExpressionValue(method = {"sendMovementPackets", "tick"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;getYaw()F"))
     private float silentRotationYaw(float original) {
         RotationManager rotationManager = RotationManager.getInstance();
         RotationPlan currentRotationPlan = rotationManager.getCurrentRotationPlan();
 
         if (currentRotationPlan == null) {
+            woqued$prevBodyYaw = this.getBodyYaw();
+            woqued$targetBodyYaw = this.getYaw();
             return original;
         }
 
@@ -65,7 +73,9 @@ public class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
             float yaw = rotation.getYaw();
 
             this.setHeadYaw(yaw);
-            this.setBodyYaw(yaw);
+            woqued$targetBodyYaw = yaw;
+            woqued$prevBodyYaw = MathHelper.lerpAngleDegrees(0.5f, woqued$prevBodyYaw, woqued$targetBodyYaw);
+            this.setBodyYaw(woqued$prevBodyYaw);
         }
 
         return rotation.getYaw();

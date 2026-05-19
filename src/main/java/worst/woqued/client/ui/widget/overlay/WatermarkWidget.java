@@ -47,7 +47,7 @@ public class WatermarkWidget extends Widget {
         String ipText = (mc.getCurrentServerEntry() != null) ? mc.getCurrentServerEntry().address : "singleplayer";
         String pcName = System.getProperty("user.name");
 
-        String clientName = "t.me/woqued";
+        String clientName = "woqued.rf.gd";
 
         // Иконки для каждого элемента (шрифт WOQUED)
         String logoIcon = "B"; // Иконка для логотипа

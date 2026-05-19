@@ -23,7 +23,6 @@ import worst.woqued.api.system.backend.SharedClass;
 import worst.woqued.api.utils.combat.CombatExecutor;
 import worst.woqued.api.utils.combat.TargetManager;
 import worst.woqued.api.utils.player.DirectionalInput;
-import worst.woqued.api.utils.player.MoveUtil;
 import worst.woqued.api.utils.rotation.RotationUtil;
 import worst.woqued.api.utils.rotation.misc.AuraUtil;
 
@@ -41,7 +40,7 @@ import worst.woqued.api.utils.rotation.rotations.GrimRotation;
 import worst.woqued.api.utils.rotation.rotations.SnapRotation;
 import worst.woqued.api.utils.rotation.rotations.PolarRotation;
 import worst.woqued.api.utils.rotation.rotations.IntaveRotation;
-import worst.woqued.api.utils.rotation.rotations.SpookyDuelsRotation;
+import worst.woqued.api.utils.rotation.rotations.SpookyTimeRotation;
 
 
 import worst.woqued.api.utils.task.TaskPriority;
@@ -66,14 +65,14 @@ public class AuraModule extends Module {
     private final GrimRotation grimRotation = new GrimRotation();
     private final AresMineRotation aresMineRotation = new AresMineRotation();
     private final IntaveRotation intaveRotation = new IntaveRotation();
-    private final SpookyDuelsRotation spookyDuelsRotation = new SpookyDuelsRotation();
+    @Getter private final SpookyTimeRotation spookyTimeRotation = new SpookyTimeRotation();
     
     @Getter private final ModeSetting aimMode = new ModeSetting("Aim mode").value("Grim").values(
-            "Snap", "Fun Time", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar", "Spooky Duels"
+            "Snap", "Fun Time", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar", "Spooky Time"
     );
 
     public boolean isFree() {
-        return moveCorrection.is("No Correction");
+        return moveCorrection.is("Free");
     }
 
     public static boolean isTargeting() {
@@ -99,7 +98,7 @@ public class AuraModule extends Module {
     private final SliderSetting elytraDistance = new SliderSetting("Elytra distance").value(4f).range(2.5f, 6f).step(0.1f).setVisible(elytraOverride::getValue);
     private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
     
-    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "No Correction");
+    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "Free", "No Correction");
 
     public LivingEntity target;
     private LivingEntity previousTarget = null;
@@ -233,14 +232,14 @@ public class AuraModule extends Module {
     private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {
         if (combatExecutor.combatManager().configurable() == null) return;
         
-        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus"), moveCorrection.is("No Correction")).clientLook(clientLook.getValue());
+        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus") || moveCorrection.is("Free"), moveCorrection.is("No Correction")).clientLook(clientLook.getValue());
 
         boolean noHitRule = (!combatExecutor.combatManager().canAttack());
 
         if (usingElytraTarget() && ElytraTargetModule.getInstance().elytraRotationProcessor.customRotations.getValue()) return;
 
         if (noHitRule && aimMode.is("Snap")) {
-            if (!moveCorrection.is("Focus"))
+            if (!moveCorrection.is("Focus") && !moveCorrection.is("Free"))
                 return;
             else rotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
         }
@@ -261,7 +260,7 @@ public class AuraModule extends Module {
             case "MetaHvH" -> metaHvHRotation;
             case "Ares Mine" -> aresMineRotation;
             case "Polar" -> polarRotation;
-            case "Spooky Duels" -> spookyDuelsRotation;
+            case "Spooky Time" -> spookyTimeRotation;
             default -> new SnapRotation();
         };
     }
@@ -278,52 +277,100 @@ public class AuraModule extends Module {
     }
 
     /**
-     * Коррекция движения при наведении на цель (Focus режим)
-     * Движение всегда направлено к цели, независимо от взгляда игрока
+     * Free — простой round скорректированного ввода (был старый Focus/Focused)
      */
-    public DirectionalInput transformDirectionForTargeting(DirectionalInput input) {
+    public DirectionalInput transformDirectionForFree(DirectionalInput input) {
         net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
-        if (player == null || target == null) {
+        if (player == null || target == null || input == null || !input.isMoving()) {
             return input;
         }
 
-        float z = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
-        float x = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
+        float forward = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
+        float sideways = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
 
-        if (z == 0 && x == 0) {
+        if (forward == 0.0f && sideways == 0.0f) {
             return input;
         }
 
         Vec3d aimPoint = getTargetVector(target);
         double deltaX = aimPoint.x - player.getPos().x;
         double deltaZ = aimPoint.z - player.getPos().z;
+        double angleToTarget = MathHelper.wrapDegrees((float) (Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0));
 
-        double angleToTarget = Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0;
-        angleToTarget = MathHelper.wrapDegrees(angleToTarget);
+        float playerYaw = player.getYaw();
+        float deltaYaw = MathHelper.wrapDegrees(playerYaw - (float) angleToTarget) * 0.017453292f;
+        float correctedForward = forward * MathHelper.cos(deltaYaw) - sideways * MathHelper.sin(deltaYaw);
+        float correctedSideways = sideways * MathHelper.cos(deltaYaw) + forward * MathHelper.sin(deltaYaw);
 
-        float yaw = player.getYaw();
-
-        float relativeAngle = (float)(angleToTarget - yaw);
-        relativeAngle = MathHelper.wrapDegrees(relativeAngle);
-
-        float moveForward = MathHelper.cos(relativeAngle * 0.017453292f);
-        float moveStrafe = -MathHelper.sin(relativeAngle * 0.017453292f);
-
-        int forward = Math.round(moveForward);
-        int strafe = Math.round(moveStrafe);
-
-        boolean movingBackwards = input.isBackwards();
-        if (movingBackwards && forward > 0) {
-            forward = -Math.abs(forward);
-        } else if (!movingBackwards && forward < 0) {
-            forward = Math.abs(forward);
-        }
-
-        return new DirectionalInput(forward, strafe);
+        return new DirectionalInput(Math.round(correctedForward), Math.round(correctedSideways));
     }
 
-public DirectionalInput transformDirectionForFree(DirectionalInput input) {
-        return input;
+    /**
+     * Focus — как Targeted из MoveFixModule (orbitPenalty + targetPenalty)
+     */
+    public DirectionalInput transformDirectionForFocus(DirectionalInput input) {
+        net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
+        if (player == null || target == null || input == null || !input.isMoving()) {
+            return input;
+        }
+
+        float forward = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
+        float sideways = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
+
+        if (forward == 0.0f && sideways == 0.0f) {
+            return input;
+        }
+
+        Vec3d aimPoint = getTargetVector(target);
+        double deltaX = aimPoint.x - player.getPos().x;
+        double deltaZ = aimPoint.z - player.getPos().z;
+        double angleToTarget = MathHelper.wrapDegrees((float) (Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0));
+
+        float playerYaw = player.getYaw();
+        float deltaYaw = MathHelper.wrapDegrees(playerYaw - (float) angleToTarget) * 0.017453292f;
+        float correctedForward = forward * MathHelper.cos(deltaYaw) - sideways * MathHelper.sin(deltaYaw);
+        float correctedSideways = sideways * MathHelper.cos(deltaYaw) + forward * MathHelper.sin(deltaYaw);
+
+        return findBestDirectionTargeted(correctedForward, correctedSideways, playerYaw, angleToTarget);
+    }
+
+    private double getMoveAngle(float yaw, int forward, int strafe) {
+        float angle = (float) Math.toDegrees(Math.atan2(-strafe, forward));
+        return MathHelper.wrapDegrees(yaw + angle);
+    }
+
+    private DirectionalInput findBestDirectionTargeted(float desiredForward, float desiredStrafe, float playerYaw, double angleToTarget) {
+        int bestForward = 0;
+        int bestStrafe = 0;
+        double bestPenalty = Double.MAX_VALUE;
+
+        float intentForward = Math.abs(desiredForward) < 0.01f ? 0.0f : (float) Math.signum(desiredForward);
+        float intentStrafe = Math.abs(desiredStrafe) < 0.01f ? 0.0f : (float) Math.signum(desiredStrafe);
+        if (intentForward == 0.0f && intentStrafe == 0.0f) {
+            intentForward = 1.0f;
+        }
+
+        double desiredAngle = getMoveAngle((float) angleToTarget, Math.round(intentForward), Math.round(intentStrafe));
+
+        for (int f = -1; f <= 1; f++) {
+            for (int s = -1; s <= 1; s++) {
+                if (f == 0 && s == 0) continue;
+
+                double moveAngle = getMoveAngle(playerYaw, f, s);
+                double orbitPenalty = Math.abs(MathHelper.wrapDegrees((float) (desiredAngle - moveAngle))) * 0.0095;
+                double targetPenalty = Math.abs(MathHelper.wrapDegrees((float) (angleToTarget - moveAngle))) * 0.00125;
+
+                double totalPenalty = orbitPenalty + targetPenalty;
+
+                if (totalPenalty < bestPenalty) {
+                    bestPenalty = totalPenalty;
+                    bestForward = f;
+                    bestStrafe = s;
+                }
+            }
+        }
+
+        return new DirectionalInput(bestForward, bestStrafe);
     }
 
     /**
@@ -339,11 +386,15 @@ public DirectionalInput transformDirectionForFree(DirectionalInput input) {
         }
 
         if (moveCorrection.is("Focus")) {
-            return transformDirectionForTargeting(input);
+            return transformDirectionForFocus(input);
+        }
+
+        if (moveCorrection.is("Free")) {
+            return transformDirectionForFree(input);
         }
 
         if (moveCorrection.is("No Correction")) {
-            return transformDirectionForFree(input);
+            return input;
         }
 
         return input;
