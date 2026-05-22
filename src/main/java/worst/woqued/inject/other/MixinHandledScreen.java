@@ -23,7 +23,6 @@ import worst.woqued.api.system.backend.KeyStorage;
 import worst.woqued.api.system.backend.SharedClass;
 import worst.woqued.api.utils.math.TimerUtil;
 import worst.woqued.client.features.modules.other.ItemScrollerModule;
-import worst.woqued.client.features.modules.other.MouseTweaksModule;
 
 @Mixin(HandledScreen.class)
 public abstract class MixinHandledScreen<T extends ScreenHandler> extends Screen implements ScreenHandlerProvider<T> {

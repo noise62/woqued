@@ -61,7 +61,6 @@ public class ModuleManager {
                 JoinerModule.getInstance(),
                 CameraClipModule.getInstance(),
                 PointersModule.getInstance(),
-                MouseTweaksModule.getInstance(),
                 NoDesyncModule.getInstance(),
                 TimerModule.getInstance(),
                 AssistantModule.getInstance(),

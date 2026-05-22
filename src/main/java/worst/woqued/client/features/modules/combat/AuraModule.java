@@ -71,10 +71,6 @@ public class AuraModule extends Module {
             "Snap", "Fun Time", "Really World", "Grim", "Intave", "MetaHvH", "Ares Mine", "Fun Sky", "Polar", "Spooky Time"
     );
 
-    public boolean isFree() {
-        return moveCorrection.is("Free");
-    }
-
     public static boolean isTargeting() {
         RotationManager rotationManager = RotationManager.getInstance();
         RotationPlan plan = rotationManager.getCurrentRotationPlan();
@@ -98,7 +94,7 @@ public class AuraModule extends Module {
     private final SliderSetting elytraDistance = new SliderSetting("Elytra distance").value(4f).range(2.5f, 6f).step(0.1f).setVisible(elytraOverride::getValue);
     private final SliderSetting elytraPreDistance = new SliderSetting("Elytra pre distance").value(16f).range(0f, 32f).step(0.1f).setVisible(elytraOverride::getValue);
     
-    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "Free", "No Correction");
+    public final ModeSetting moveCorrection = new ModeSetting("Move Correction").value("Focus").values("Focus", "No Correction");
 
     public LivingEntity target;
     private LivingEntity previousTarget = null;
@@ -145,11 +141,7 @@ public class AuraModule extends Module {
             AuraUtil.onAttack(aimMode.getValue());
         }));
         
-        EventListener movementCorrectionEvent = RotationUpdateEvent.getInstance().subscribe(new Listener<>(event -> {
-            applyMovementCorrection();
-        }));
-        
-        addEvents(eventUpdate, rotationUpdateEvent, attackEvent, movementCorrectionEvent);
+        addEvents(eventUpdate, rotationUpdateEvent, attackEvent);
     }
 
     private void postRotMoveEventHandler() {
@@ -232,14 +224,14 @@ public class AuraModule extends Module {
     private void rotateToTarget(LivingEntity target, Vec3d targetVec, Rotation rotation) {
         if (combatExecutor.combatManager().configurable() == null) return;
         
-        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus") || moveCorrection.is("Free"), moveCorrection.is("No Correction")).clientLook(clientLook.getValue());
+        RotationStrategy configurable = new RotationStrategy(getRotationMode(), moveCorrection.is("Focus"), moveCorrection.is("No Correction")).clientLook(clientLook.getValue());
 
         boolean noHitRule = (!combatExecutor.combatManager().canAttack());
 
         if (usingElytraTarget() && ElytraTargetModule.getInstance().elytraRotationProcessor.customRotations.getValue()) return;
 
         if (noHitRule && aimMode.is("Snap")) {
-            if (!moveCorrection.is("Focus") && !moveCorrection.is("Free"))
+            if (!moveCorrection.is("Focus"))
                 return;
             else rotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
         }
@@ -277,35 +269,6 @@ public class AuraModule extends Module {
     }
 
     /**
-     * Free — простой round скорректированного ввода (был старый Focus/Focused)
-     */
-    public DirectionalInput transformDirectionForFree(DirectionalInput input) {
-        net.minecraft.client.network.ClientPlayerEntity player = SharedClass.player();
-        if (player == null || target == null || input == null || !input.isMoving()) {
-            return input;
-        }
-
-        float forward = KeyboardInput.getMovementMultiplier(input.isForwards(), input.isBackwards());
-        float sideways = KeyboardInput.getMovementMultiplier(input.isLeft(), input.isRight());
-
-        if (forward == 0.0f && sideways == 0.0f) {
-            return input;
-        }
-
-        Vec3d aimPoint = getTargetVector(target);
-        double deltaX = aimPoint.x - player.getPos().x;
-        double deltaZ = aimPoint.z - player.getPos().z;
-        double angleToTarget = MathHelper.wrapDegrees((float) (Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0));
-
-        float playerYaw = player.getYaw();
-        float deltaYaw = MathHelper.wrapDegrees(playerYaw - (float) angleToTarget) * 0.017453292f;
-        float correctedForward = forward * MathHelper.cos(deltaYaw) - sideways * MathHelper.sin(deltaYaw);
-        float correctedSideways = sideways * MathHelper.cos(deltaYaw) + forward * MathHelper.sin(deltaYaw);
-
-        return new DirectionalInput(Math.round(correctedForward), Math.round(correctedSideways));
-    }
-
-    /**
      * Focus — как Targeted из MoveFixModule (orbitPenalty + targetPenalty)
      */
     public DirectionalInput transformDirectionForFocus(DirectionalInput input) {
@@ -326,7 +289,7 @@ public class AuraModule extends Module {
         double deltaZ = aimPoint.z - player.getPos().z;
         double angleToTarget = MathHelper.wrapDegrees((float) (Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0));
 
-        float playerYaw = player.getYaw();
+        float playerYaw = RotationManager.getInstance().getRotation().getYaw();
         float deltaYaw = MathHelper.wrapDegrees(playerYaw - (float) angleToTarget) * 0.017453292f;
         float correctedForward = forward * MathHelper.cos(deltaYaw) - sideways * MathHelper.sin(deltaYaw);
         float correctedSideways = sideways * MathHelper.cos(deltaYaw) + forward * MathHelper.sin(deltaYaw);
@@ -358,9 +321,10 @@ public class AuraModule extends Module {
 
                 double moveAngle = getMoveAngle(playerYaw, f, s);
                 double orbitPenalty = Math.abs(MathHelper.wrapDegrees((float) (desiredAngle - moveAngle))) * 0.0095;
-                double targetPenalty = Math.abs(MathHelper.wrapDegrees((float) (angleToTarget - moveAngle))) * 0.00125;
+                double targetPenalty = Math.abs(MathHelper.wrapDegrees((float) (angleToTarget - moveAngle))) * 0.05;
+                double backwardPenalty = f < 0 ? 5.0 : 0;
 
-                double totalPenalty = orbitPenalty + targetPenalty;
+                double totalPenalty = orbitPenalty + targetPenalty + backwardPenalty;
 
                 if (totalPenalty < bestPenalty) {
                     bestPenalty = totalPenalty;
@@ -389,10 +353,6 @@ public class AuraModule extends Module {
             return transformDirectionForFocus(input);
         }
 
-        if (moveCorrection.is("Free")) {
-            return transformDirectionForFree(input);
-        }
-
         if (moveCorrection.is("No Correction")) {
             return input;
         }
@@ -400,6 +360,4 @@ public class AuraModule extends Module {
         return input;
     }
 
-    public void applyMovementCorrection() {
-    }
 }
